@@ -248,8 +248,11 @@ const MajorDetailPage: React.FC = () => {
     if (group1.length > 0) {
       groups.push({
         type: 'score',
-        name: userTarget ? `🏆 分数匹配大学（${userTarget.score}分左右）` : '🏆 分数匹配大学',
-        universities: group1.map(u => ({ ...u, match_reason: `录取分${u.admission_score}，适合${userTarget?.score}分左右的考生` }))
+        name: userTarget ? `🏆 分数匹配大学（${userTarget.score || '--'}分左右）` : '🏆 分数匹配大学',
+        universities: group1.map(u => ({ 
+          ...u, 
+          match_reason: `录取分${u.admission_score || '--'}，适合${userTarget?.score || '--'}分左右的考生` 
+        }))
       });
     }
     
@@ -331,7 +334,7 @@ const MajorDetailPage: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <motion.button
         onClick={() => navigate('/majors')}
-        className="mb-4 text-primary-600 hover:text-primary-800 flex items-center gap-2"
+        className="mb-4 text-primary-600 hover:text-primary-800 dark:text-primary-400 flex items-center gap-2"
         whileHover={{ x: -5 }}
       >
         ← 返回专业列表
@@ -342,13 +345,13 @@ const MajorDetailPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className="card"
       >
-        <div className="border-b pb-4 mb-4">
-          <h1 className="text-2xl font-bold mb-2">{major.major_name}</h1>
+        <div className="border-b pb-4 mb-4 dark:border-gray-700">
+          <h1 className="text-2xl font-bold mb-2 dark:text-white">{major.major_name}</h1>
           <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+            <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-sm">
               {major.category}
             </span>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+            <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-sm">
               热度 {major.heat_index?.toFixed(1) || '暂无'}
             </span>
           </div>
@@ -375,29 +378,29 @@ const MajorDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {major.universities && major.universities.length > 0 && (
+            {major.universities && major.universities.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">🏫 推荐大学</h2>
+              <h2 className="text-xl font-bold dark:text-white">🏫 推荐大学</h2>
               <button
                 onClick={() => setShowTargetModal(true)}
-                className="text-sm text-primary-600 hover:text-primary-800"
+                className="text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400"
               >
                 {userTarget ? '修改目标' : '设置目标'}
               </button>
             </div>
             
             {userTarget && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  🎯 您的目标：{userTarget.province}省 · 预估分数 {userTarget.score}分
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  🎯 您的目标：{userTarget.province}省 · 预估分数 {userTarget.score || '--'}分
                 </p>
               </div>
             )}
 
             {major.universities.map((group, idx) => (
               <div key={group.type} className="mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">{group.name}</h3>
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">{group.name}</h3>
                 <div className="space-y-3">
                   {group.universities.map((uni, uidx) => (
                     <motion.div
@@ -405,22 +408,22 @@ const MajorDetailPage: React.FC = () => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 + uidx * 0.05 }}
-                      className="bg-gray-50 rounded-lg p-3"
+                      className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-semibold">{uni.name}</span>
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                        <span className="font-semibold text-gray-900 dark:text-white">{uni.name}</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
                           {uni.level}
                         </span>
                         {uni.admission_score && (
-                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">
                             录取分 {uni.admission_score}
                           </span>
                         )}
-                        <span className="text-xs text-gray-500">就业率 {uni.employment_rate}</span>
-                        <span className="text-xs text-gray-500">{uni.location}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">就业率 {uni.employment_rate}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{uni.location}</span>
                       </div>
-                      <p className="text-sm text-gray-600">{uni.match_reason}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{uni.match_reason}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -431,7 +434,7 @@ const MajorDetailPage: React.FC = () => {
 
         {major.notes && major.notes.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold mb-4">⚠️ 注意事项</h2>
+            <h2 className="text-xl font-bold dark:text-white mb-4">⚠️ 注意事项</h2>
             <div className="space-y-4">
               {major.notes.map((note, idx) => (
                 <motion.div
@@ -439,24 +442,24 @@ const MajorDetailPage: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="bg-orange-50 rounded-lg p-4"
+                  className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-4"
                 >
-                  <h3 className="font-semibold text-orange-800 mb-2">
+                  <h3 className="font-semibold text-orange-800 dark:text-orange-300 mb-2">
                     {note.icon} {note.category.replace(/[💰🔄📚📈🎯]/g, '').trim()}
                   </h3>
                   <ul className="space-y-1">
                     {note.points.map((point, pidx) => (
-                      <li key={pidx} className="text-sm text-gray-700 flex items-start gap-2">
+                      <li key={pidx} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
                         <span className="text-orange-500 mt-1">•</span>
                         {point}
                       </li>
                     ))}
                   </ul>
                   {note.suggestions && note.suggestions.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-orange-200">
-                      <p className="text-sm font-medium text-orange-700 mb-1">💡 建议</p>
+                    <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
+                      <p className="text-sm font-medium text-orange-700 dark:text-orange-400 mb-1">💡 建议</p>
                       {note.suggestions.map((s, sidx) => (
-                        <p key={sidx} className="text-sm text-gray-600">• {s}</p>
+                        <p key={sidx} className="text-sm text-gray-600 dark:text-gray-400">• {s}</p>
                       ))}
                     </div>
                   )}
@@ -468,12 +471,12 @@ const MajorDetailPage: React.FC = () => {
 
         {major.courses && major.courses.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold mb-3">📚 核心课程</h2>
+            <h2 className="text-xl font-bold dark:text-white mb-3">📚 核心课程</h2>
             <div className="flex flex-wrap gap-2">
               {major.courses.map((course, idx) => (
                 <span
                   key={idx}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                  className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm"
                 >
                   {course}
                 </span>
@@ -483,15 +486,15 @@ const MajorDetailPage: React.FC = () => {
         )}
 
         <div className="mb-6">
-          <h2 className="text-xl font-bold mb-3">💡 专业介绍</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <h2 className="text-xl font-bold dark:text-white mb-3">💡 专业介绍</h2>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
             {major.description}
           </p>
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-3">🎯 就业前景</h2>
-          <p className="text-gray-700 leading-relaxed">
+          <h2 className="text-xl font-bold dark:text-white mb-3">🎯 就业前景</h2>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
             {major.career_prospects}
           </p>
         </div>
