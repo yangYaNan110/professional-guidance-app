@@ -140,8 +140,8 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
     return (
       <div className="mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-xl h-80"></div>
-          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-xl h-80"></div>
+          <div className="bg-gray-200 dark:bg-gray-700 rounded-xl h-80"></div>
+          <div className="bg-gray-200 dark:bg-gray-700 rounded-xl h-80"></div>
         </div>
       </div>
     );
@@ -155,6 +155,9 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
     );
   }
 
+  // 固定高度（刚好显示3条热点）
+  const MODULE_HEIGHT = "320px";
+
   return (
     <div className="mt-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -162,10 +165,11 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm"
+          className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col"
+          style={{ height: MODULE_HEIGHT }}
         >
           {/* 标题 */}
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex-shrink-0 flex items-center gap-2 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
             <span className="text-lg">🎬</span>
             <h3 className="font-semibold text-gray-900 dark:text-white">视频讲解</h3>
             <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
@@ -175,23 +179,23 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           
           {/* 视频内容 */}
           {introVideo ? (
-            <>
+            <div className="flex-1 flex flex-col p-5 overflow-hidden">
               <div 
-                className="relative cursor-pointer group"
+                className="relative cursor-pointer group flex-shrink-0 rounded-lg overflow-hidden"
                 onClick={() => introVideo.is_video && setShowPlayer(true)}
               >
                 {introVideo.cover ? (
                   <img
                     src={introVideo.cover}
                     alt={introVideo.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-32 object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://via.placeholder.com/640x360?text=Video';
                     }}
                   />
                 ) : (
-                  <div className="w-full h-48 bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                    <span className="text-5xl">🎬</span>
+                  <div className="w-full h-32 bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                    <span className="text-4xl">🎬</span>
                   </div>
                 )}
                 
@@ -204,9 +208,9 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                     <motion.div 
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
-                      className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg"
+                      className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg"
                     >
-                      <svg className="w-8 h-8 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </motion.div>
@@ -215,13 +219,13 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                 
                 {/* 时长 */}
                 {introVideo.is_video && introVideo.duration && (
-                  <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-sm px-2.5 py-1 rounded-md font-medium">
+                  <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded font-medium">
                     {formatDuration(introVideo.duration)}
                   </div>
                 )}
                 
                 {/* 平台标签 */}
-                <div className="absolute top-3 left-3 bg-pink-500 text-white text-xs px-2.5 py-1 rounded-md font-medium flex items-center gap-1">
+                <div className="absolute top-2 left-2 bg-pink-500 text-white text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1">
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.813 4.653h2.334c.63 0 1.143.513 1.143 1.143v12.375c0 .63-.513 1.143-1.143 1.143H4.653c-.63 0-1.143-.513-1.143-1.143V5.796c0-.63.513-1.143 1.143-1.143h2.334c.315 0 .62.13.843.358l4.394 4.415c.228.228.538.358.843.358h.002c.305 0 .615-.13.843-.358l4.394-4.415c.223-.228.528-.358.843-.358z"/>
                   </svg>
@@ -230,53 +234,39 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
               </div>
               
               {/* 视频信息 */}
-              <div className="p-5">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-lg mb-3 leading-snug line-clamp-2">
-                  {introVideo.title}
-                </h4>
-                
-                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                    </svg>
-                    {formatViewCount(introVideo.view_count)}
-                  </span>
-                  {introVideo.author && (
-                    <span className="flex items-center gap-1.5">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              <div className="flex-1 flex flex-col justify-between mt-3 overflow-hidden">
+                <div>
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2 mb-2">
+                    {introVideo.title}
+                  </h4>
+                  
+                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
                       </svg>
-                      {introVideo.author}
+                      {formatViewCount(introVideo.view_count)}
                     </span>
-                  )}
-                  <span>{introVideo.pub_date}</span>
+                    {introVideo.author && <span>{introVideo.author}</span>}
+                  </div>
                 </div>
                 
-                {introVideo.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
-                    {introVideo.description}
-                  </p>
-                )}
-                
-                {/* 跳转链接 */}
                 <a
                   href={introVideo.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-pink-500 hover:text-pink-600 font-medium"
+                  className="flex-shrink-0 inline-flex items-center gap-1 text-xs text-pink-500 hover:text-pink-600 font-medium mt-2"
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                   </svg>
                   查看完整视频
                 </a>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              <span className="text-4xl mb-2 block">🎬</span>
-              <p>暂无专业讲解视频</p>
+            <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <span className="text-3xl mb-2 block">🎬</span>
             </div>
           )}
         </motion.div>
@@ -287,9 +277,10 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col"
+          style={{ height: MODULE_HEIGHT }}
         >
           {/* 标题 */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
               <span className="text-lg">🔥</span>
               <h3 className="font-semibold text-gray-900 dark:text-white">热点资讯</h3>
@@ -299,7 +290,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
             </div>
           </div>
           
-          {/* 热点列表 - 可滚动 */}
+          {/* 热点列表 - 固定高度，超出滚动 */}
           <div 
             ref={scrollRef}
             className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 scrollbar-hide"
@@ -365,7 +356,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           </div>
           
           {/* 底部来源 */}
-          <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex-shrink-0 p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
               数据来源：B站、知乎、36氪、虎嗅等平台 • 点击查看原文
             </p>
