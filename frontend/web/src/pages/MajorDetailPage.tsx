@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import VideoSection from '../components/VideoSection';
 
 interface MajorDetail {
   id: number;
@@ -61,73 +62,23 @@ interface UserTarget {
 }
 
 interface MajorIntroduction {
-  origin: string;
-  development: string;
-  currentStatus: string;
-  trends: string;
+  introduction: string;
   relatedMajors: string[];
 }
 
 const API_BASE = 'http://localhost:8004';
 
-const majorIntroductions: Record<string, MajorIntroduction> = {
-  '计算机科学与技术': {
-    origin: '计算机科学与技术专业源于20世纪中期的计算机科学学科，随着电子计算机的发明而产生。该学科最初服务于军事和科学研究需求，后逐步发展为独立的学术领域。',
-    development: '从最初的机器语言编程到高级语言，从大型机到个人电脑，从局域网到互联网，经历了多次技术革命。学科体系从单一的计算机硬件研究，发展为涵盖软件、硬件、网络、人工智能等多领域的综合性学科。',
-    currentStatus: '当前是全球最热门的技术学科之一。中国在超级计算、5G通信、人工智能等领域达到世界领先水平。几乎所有高校都开设此专业，年招生规模超过30万人。',
-    trends: '人工智能、量子计算、边缘计算、隐私计算等方向是未来发展重点。跨学科融合趋势明显，如计算机+医学、计算机+金融等复合型人才需求旺盛。',
-    relatedMajors: ['人工智能', '软件工程', '数据科学与大数据技术', '网络工程', '信息安全']
-  },
-  '人工智能': {
-    origin: '人工智能（AI）作为一门学科诞生于1956年达特茅斯会议。早期研究受限于计算能力，发展经历多次起伏，直到深度学习技术的突破才迎来爆发式增长。',
-    development: '从早期的专家系统、机器学习，到深度学习、强化学习，AI经历了多次技术范式转变。2012年AlexNet在ImageNet竞赛中取得突破性成绩，标志着深度学习时代的到来。',
-    currentStatus: 'AI技术已广泛应用于各行各业。中国在计算机视觉、自然语言处理等领域处于国际第一梯队。ChatGPT等大语言模型引发新一轮技术革命。',
-    trends: '大模型、多模态AI、具身智能、AI for Science是主要发展方向。AI与各行业的深度融合将创造大量就业机会，同时也带来伦理和安全挑战。',
-    relatedMajors: ['计算机科学与技术', '数据科学与大数据技术', '自动化', '数学']
-  },
-  '金融学': {
-    origin: '金融学源于经济学，是研究货币、信贷、银行、证券等金融活动及其规律的学科。现代金融学形成于20世纪初，随着金融市场的繁荣发展而不断壮大。',
-    development: '从传统的货币银行学，到公司金融、资产定价、行为金融等分支学科的建立，金融学体系日趋完善。数学模型和量化方法在金融领域的应用日益广泛。',
-    currentStatus: '金融行业是现代经济体系的核心。中国金融市场规模位居世界前列，但对高端金融人才需求旺盛。 fintech（金融科技）正在重塑传统金融业。',
-    trends: '绿色金融、普惠金融、金融科技是发展方向。量化投资、智能投顾、区块链在金融领域的应用将持续深化。',
-    relatedMajors: ['经济学', '统计学', '工商管理', '会计学', '数学']
-  },
-  '临床医学': {
-    origin: '临床医学是医学的核心分支，致力于疾病的诊断、治疗和预防。其历史可追溯至古代巫医不分的状态，经过数千年发展逐步成为一门科学。',
-    development: '从经验医学到循证医学，从传统诊疗到精准医疗，临床医学经历了深刻变革。影像学、检验医学、内镜技术等大大提高了诊断准确率。',
-    currentStatus: '临床医学是医疗体系的基础。中国医疗资源总量大但分布不均，基层医疗人才缺口较大。医患关系、医疗改革是社会热点话题。',
-    trends: '精准医学、转化医学、智慧医疗是发展方向。人工智能辅助诊断、基因治疗等新技术将改变传统诊疗模式。',
-    relatedMajors: ['基础医学', '口腔医学', '护理学', '公共卫生与预防医学']
-  },
-  '法学': {
-    origin: '法学是研究法律规范及其适用规律的学科。在中国，法学教育始于清末民初的新式学堂，经过百余年的发展已成为高等教育的重要组成部分。',
-    development: '从移植西方法律制度到建设中国特色社会主义法治体系，中国法学经历了从借鉴到创新的过程。法理学、宪法学、刑法学、民法学等分支学科体系完备。',
-    currentStatus: '全面依法治国战略为法学发展提供了广阔空间。法治政府建设、企业合规管理、国际商事争端解决等领域人才需求旺盛。',
-    trends: '数字法学、环境法学、国际法等新兴领域快速发展。法律与科技融合带来新的研究方向和就业机会。',
-    relatedMajors: ['社会学', '政治学与行政学', '知识产权', '经济学']
-  },
-  '社会学': {
-    origin: '社会学是一门研究社会关系、社会结构和社会变迁的学科。19世纪末由孔德、涂尔干等学者创立，20世纪初传入中国。',
-    development: '从经典社会学到现代社会学，学科理论和方法不断丰富。实证研究方法的引入使社会学更加科学化。中国社会学在社会转型期发挥了重要作用。',
-    currentStatus: '社会治理现代化为社会学提供了广阔舞台。社会调查、政策评估、社区建设等领域需要大量专业人才。',
-    trends: '数字社会学、人口老龄化、城乡发展等议题研究深入。社会工作、社会政策方向人才需求增加。',
-    relatedMajors: ['社会工作', '政治学与行政学', '法学', '心理学']
-  },
-  '数据科学与大数据技术': {
-    origin: '数据科学是21世纪新兴的交叉学科，整合了统计学、计算机科学和领域知识。2012年《哈佛商业评论》称数据科学家为"21世纪最性感职业"。',
-    development: '大数据概念2011年由麦肯锡提出后迅速普及。云计算、分布式计算等技术突破使海量数据处理成为可能。数据科学成为企业数字化转型的核心能力。',
-    currentStatus: '数据驱动决策已成为各行业共识。中国大数据产业规模超万亿，但数据人才缺口仍达百万级。',
-    trends: '数据中台、隐私计算、实时数据处理是技术热点。数据治理、数据安全方向人才需求上升。',
-    relatedMajors: ['计算机科学与技术', '统计学', '人工智能', '数学']
-  },
-  '自动化': {
-    origin: '自动化是利用控制系统代替人工操作的工程技术。工业革命催生了自动化需求，20世纪自动控制理论的确立奠定了学科基础。',
-    development: '从机械自动化到电气自动化，再到智能自动化，技术水平不断提升。PLC、DCS、工业机器人等设备广泛应用。',
-    currentStatus: '智能制造为中国工业转型升级提供支撑。工业互联网、机器人产业快速发展，对自动化人才需求旺盛。',
-    trends: '工业互联网、数字孪生、智能机器人是发展方向。人机协作、柔性制造成为新趋势。',
-    relatedMajors: ['电气工程及其自动化', '测控技术与仪器', '计算机科学与技术', '机械工程']
-  }
-};
+// 硬编码的专业介绍数据（备用，现在从API获取）
+// const majorIntroductions: Record<string, MajorIntroduction> = {
+//   '计算机科学与技术': {
+//     origin: '计算机科学与技术专业源于20世纪中期的计算机科学学科...',
+//     development: '从最初的机器语言编程到高级语言...',
+//     currentStatus: '当前是全球最热门的技术学科之一...',
+//     trends: '人工智能、量子计算等方向是未来发展重点...',
+//     relatedMajors: ['人工智能', '软件工程', '数据科学与大数据技术', '网络工程', '信息安全']
+//   },
+//   // ... 其他专业数据
+// };
 
 const MajorDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -140,6 +91,8 @@ const MajorDetailPage: React.FC = () => {
   const [targetForm, setTargetForm] = useState({ province: '', score: '' });
   const [activeTab, setActiveTab] = useState<'intro' | 'universities'>('intro');
   const [selectedRelatedMajor, setSelectedRelatedMajor] = useState<string | null>(null);
+  const [majorIntro, setMajorIntro] = useState<MajorIntroduction | null>(null);
+  const [introLoading, setIntroLoading] = useState(true);
 
   useEffect(() => {
     const savedTarget = localStorage.getItem('userTarget');
@@ -149,6 +102,32 @@ const MajorDetailPage: React.FC = () => {
       setShowTargetModal(true);
     }
   }, []);
+
+  useEffect(() => {
+    const fetchMajorIntro = async () => {
+      if (!major?.major_name) return;
+      
+      try {
+        setIntroLoading(true);
+        const introResponse = await fetch(`http://localhost:8005/api/v1/major/intro/${encodeURIComponent(major.major_name)}`);
+        if (introResponse.ok) {
+          const introData = await introResponse.json();
+          if (introData.success) {
+            setMajorIntro({
+              introduction: introData.introduction || '暂无专业介绍',
+              relatedMajors: introData.related_majors || []
+            });
+          }
+        }
+      } catch (err) {
+        console.error('获取专业介绍失败:', err);
+      } finally {
+        setIntroLoading(false);
+      }
+    };
+
+    fetchMajorIntro();
+  }, [major?.major_name]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -360,57 +339,55 @@ const MajorDetailPage: React.FC = () => {
 
           {activeTab === 'intro' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              {(() => {
-                const intro = majorIntroductions[major.major_name];
-                if (!intro) return <p className="text-gray-500">暂无专业介绍</p>;
-
-                const relatedMajors = intro.relatedMajors || [];
-                const displayMajor = selectedRelatedMajor || major.major_name;
-                const displayIntro = majorIntroductions[displayMajor] || intro;
-
-                return (
-                  <div>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {relatedMajors.map((related) => (
-                        <button
-                          key={related}
-                          onClick={() => setSelectedRelatedMajor(related)}
-                          className={`px-3 py-1.5 text-sm rounded-full transition-colors ${displayMajor === related ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30'}`}
-                        >
-                          {related}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid gap-4">
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">🔍 溯源</h4>
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.origin}</p>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">📈 发展</h4>
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.development}</p>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">📊 现状</h4>
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.currentStatus}</p>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">🚀 趋势</h4>
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.trends}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg border border-orange-100 dark:border-orange-800">
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-2">🎬 视频介绍</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">观看视频，深入了解{displayMajor}专业</p>
-                      <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                        <span className="text-gray-500 text-sm">🎥 视频功能开发中...</span>
-                      </div>
-                    </div>
+              {introLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">正在加载专业介绍...</p>
+                </div>
+              ) : majorIntro ? (
+                <div>
+                  {/* 专业介绍内容 - 一段连贯的文字 */}
+                  <div className="prose prose-gray dark:prose-invert max-w-none">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                      {majorIntro.introduction}
+                    </p>
                   </div>
-                );
-              })()}
+
+                  {/* 相关专业标签 */}
+                  {majorIntro.relatedMajors.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">相关专业</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {majorIntro.relatedMajors.map((related) => (
+                          <button
+                            key={related}
+                            onClick={() => {
+                              setSelectedRelatedMajor(related);
+                              fetch(`http://localhost:8005/api/v1/major/intro/${encodeURIComponent(related)}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                  if (data.success) {
+                                    setMajorIntro({
+                                      introduction: data.introduction || '暂无专业介绍',
+                                      relatedMajors: data.related_majors || []
+                                    });
+                                  }
+                                });
+                            }}
+                            className={`px-3 py-1.5 text-sm rounded-full transition-colors ${selectedRelatedMajor === related ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30'}`}
+                          >
+                            {related}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 视频模块 */}
+                  <VideoSection majorName={major.major_name} />
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">暂无专业介绍</p>
+              )}
             </motion.div>
           )}
 
