@@ -181,26 +181,27 @@ async def get_video_summary(
 
 @app.get("/api/v1/video/professional/{major_name}")
 async def get_professional_videos(
-    major_name: str,
-    page: int = Query(1, description="页码"),
-    page_size: int = Query(5, description="每页数量")
+    major_name: str
 ):
     """
     获取专业相关视频
     
-    搜索指定专业的教学、介绍类视频
+    只返回1个最佳视频，要求：
+    1. 视频内容能覆盖时间线5个阶段：起源与发展、挫折与争议、重大突破、现状与爆发、未来展望
+    2. 时长不超过5分钟（300秒）
+    3. 按综合评分排序返回最佳视频
     """
     # 构建搜索关键词
     keywords = [
         f"{major_name}专业介绍",
         f"{major_name}专业解读",
         f"什么是{major_name}",
-        f"{major_name}就业前景"
+        f"{major_name}完整介绍"
     ]
     
     # B站API需要特定请求头
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0; Intel Mac OS.0.0 Safari/537.36",
         "Referer": "https://www.bilibili.com"
     }
     
@@ -213,8 +214,8 @@ async def get_professional_videos(
                 params = {
                     "search_type": "video",
                     "keyword": keyword,
-                    "page": page,
-                    "page_size": page_size,
+                    "page": 1,
+                    "page_size": 10,
                     "order": "totalrank"
                 }
                 
@@ -270,7 +271,7 @@ async def get_professional_videos(
             print(f"搜索失败 {keyword}: {e}")
             continue
     
-    # 去重并返回
+    # 去重
     seen_bvids = set()
     unique_results = []
     for video in all_results:
@@ -278,13 +279,101 @@ async def get_professional_videos(
             seen_bvids.add(video["bvid"])
             unique_results.append(video)
     
-    return {
-        "major_name": major_name,
-        "total_results": len(unique_results),
-        "page": page,
-        "page_size": page_size,
-        "videos": unique_results[:page_size]
-    }
+    # 计算评分并排序
+    scored_videos = []
+    for video in unique_results:
+        score = calculate_video_score(video, major_name)
+        scored_videos.append({
+            **video,
+            "score": score
+        })
+    
+    # 按评分降序排序
+    scored_videos.sort(key=lambda x: x["score"], reverse=True)
+    
+    # 返回最佳视频（添加必要的字段）
+    best = scored_videos[0] if scored_videos else None
+    if best:
+        best["is_video"] = True
+        best["source"] = "B站"
+        pubdate_val = best.get("pubdate", 0)
+        best["pub_date"] = datetime.fromtimestamp(pubdate_val).strftime("%Y-%m-%d") if pubdate_val else ""
+        best.pop("pubdate", None)
+        best.pop("search_keyword", None)
+    
+    return best
+
+
+def calculate_video_score(video: Dict, major_name: str) -> float:
+    """
+    计算视频评分
+    
+    评分规则：
+    - 内容覆盖度（最重要，权重50%）：必须覆盖时间线5个阶段
+    - 时长评分（权重20%）：最佳3-5分钟
+    - 播放量评分（权重15%）
+    - 相关度评分（权重15%）
+    """
+    score = 0.0
+    
+    # 内容覆盖度（权重50%）
+    title = video.get("title", "")
+    description = video.get("description", "")
+    content = f"{title} {description}".lower()
+    
+    required_keywords = [
+        ("起源", "发展", "历史"),        # 起源与发展
+        ("挫折", "争议", "低谷", "寒冬"), # 挫折与争议
+        ("突破", "成就", "里程碑", "革命"), # 重大突破
+        ("现状", "爆发", "现在", "当前"),  # 现状与爆发
+        ("未来", "展望", "趋势", "前景")   # 未来展望
+    ]
+    
+    coverage_count = 0
+    for keyword_group in required_keywords:
+        if any(kw in content for kw in keyword_group):
+            coverage_count += 1
+    
+    coverage_score = (coverage_count / 5) * 50  # 满分50分
+    
+    # 时长评分（权重20%），最佳3-5分钟（180-300秒）
+    duration = video.get("duration", 0)
+    if duration <= 60:
+        duration_score = 5   # 太短
+    elif duration <= 180:
+        duration_score = 15  # 偏短
+    elif duration <= 300:
+        duration_score = 20  # 最佳
+    elif duration <= 600:
+        duration_score = 12  # 可接受
+    else:
+        duration_score = 5   # 太长
+    
+    # 播放量评分（权重15%）
+    view_count = video.get("view_count", 0)
+    if view_count >= 100000:
+        view_score = 15
+    elif view_count >= 50000:
+        view_score = 13
+    elif view_count >= 10000:
+        view_score = 11
+    elif view_count >= 5000:
+        view_score = 9
+    elif view_count >= 1000:
+        view_score = 7
+    else:
+        view_score = 4
+    
+    # 相关度评分（权重15%）
+    relevance_score = 0
+    title_lower = title.lower()
+    if major_name in title:
+        relevance_score += 8
+    if "专业" in title or "介绍" in title or "解读" in title or "讲解" in title:
+        relevance_score += 7
+    
+    total_score = coverage_score + duration_score + view_score + relevance_score
+    return total_score
 
 
 def generate_mock_summary(video_info: Dict) -> str:
@@ -334,6 +423,429 @@ def generate_key_points(video_info: Dict) -> List[str]:
         "学习实际应用案例",
         "理解未来发展趋势"
     ]
+
+
+@app.get("/api/v1/video/hot-events/{major_name}")
+async def get_hot_events(major_name: str):
+    """
+    获取专业相关的热点事件
+    
+    从多个平台搜索最近的热点事件：
+    - B站视频
+    - 知乎热榜/文章
+    - 36氪/虎嗅等科技媒体
+    """
+    # 构建搜索关键词
+    keywords = [
+        f"{major_name}最新消息",
+        f"{major_name}热点",
+        f"{major_name}新闻 2024",
+        f"{major_name}新闻 2025",
+        f"{major_name}突破",
+        f"{major_name}重大突破",
+        f"{major_name}行业动态"
+    ]
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Referer": "https://www.bilibili.com"
+    }
+    
+    all_events = []
+    
+    # 1. 从B站搜索热点视频
+    for keyword in keywords[:3]:
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
+                search_url = f"{BILIBILI_API}/x/web-interface/search/type"
+                params = {
+                    "search_type": "video",
+                    "keyword": keyword,
+                    "page": 1,
+                    "page_size": 5,
+                    "order": "click"  # 按播放量排序
+                }
+                
+                response = await client.get(search_url, params=params)
+                
+                if response.status_code != 200:
+                    continue
+                
+                try:
+                    data = response.json()
+                except:
+                    continue
+                
+                if data.get("code") != 0:
+                    continue
+                
+                for item in data.get("data", {}).get("result", []):
+                    if not isinstance(item, dict):
+                        continue
+                    
+                    title = item.get("title", "").replace("<em class=\"keyword\">", "").replace("</em>", "")
+                    if not title:
+                        continue
+                    
+                    # 解析发布时间
+                    pubdate = item.get("pubdate", 0)
+                    pubdate_str = datetime.fromtimestamp(pubdate).strftime("%Y-%m-%d") if pubdate else ""
+                    
+                    # 判断事件类型
+                    event_type = detect_event_type(title)
+                    
+                    all_events.append({
+                        "title": title,
+                        "description": item.get("description", "")[:300],
+                        "source": "B站",
+                        "url": f"https://www.bilibili.com/video/{item.get('bvid', '')}",
+                        "pub_date": pubdate_str,
+                        "view_count": item.get("play", 0),
+                        "heat_index": min(item.get("play", 0) / 1000, 100),
+                        "is_video": True,
+                        "event_type": event_type,
+                        "cover": item.get("pic", ""),
+                        "author": item.get("author", "")
+                    })
+        except Exception as e:
+            print(f"搜索B站热点失败 {keyword}: {e}")
+            continue
+    
+    # 2. 从知乎搜索热点（模拟知乎热榜数据）
+    zhihu_events = await search_zhihu_hot(major_name, headers)
+    all_events.extend(zhihu_events)
+    
+    # 3. 从36氪搜索科技新闻
+    kr36_events = await search_kr36_hot(major_name, headers)
+    all_events.extend(kr36_events)
+    
+    # 4. 从虎嗅搜索科技资讯
+    huxiu_events = await search_huxiu_hot(major_name, headers)
+    all_events.extend(huxiu_events)
+    
+    # 去重并排序
+    seen_titles = set()
+    unique_events = []
+    for event in all_events:
+        title = event["title"]
+        if title and title not in seen_titles:
+            seen_titles.add(title)
+            unique_events.append(event)
+    
+    # 按热度排序
+    unique_events.sort(key=lambda x: x.get("heat_index", 0), reverse=True)
+    
+    return {
+        "major_name": major_name,
+        "total_events": len(unique_events),
+        "events": unique_events[:10],
+        "generated_at": datetime.now().isoformat()
+    }
+
+
+async def search_zhihu_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从知乎搜索热点（使用搜索API模拟）"""
+    events = []
+    
+    keywords = [f"{major_name}最新", f"{major_name}热点", f"{major_name}2025"]
+    
+    for keyword in keywords[:2]:
+        try:
+            async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+                # 知乎搜索API
+                url = "https://www.zhihu.com/api/v4/search"
+                params = {
+                    "q": keyword,
+                    "type": "article",
+                    "limit": 5
+                }
+                
+                response = await client.get(url, params=params)
+                if response.status_code != 200:
+                    continue
+                
+                try:
+                    data = response.json()
+                except:
+                    continue
+                
+                for item in data.get("data", [])[:3]:
+                    if not isinstance(item, dict):
+                        continue
+                    
+                    question = item.get("question", {})
+                    title = question.get("title", "")
+                    if not title:
+                        continue
+                    
+                    # 判断事件类型
+                    event_type = detect_event_type(title)
+                    
+                    events.append({
+                        "title": title,
+                        "description": question.get("excerpt", "")[:200],
+                        "source": "知乎",
+                        "url": f"https://www.zhihu.com/question/{question.get('id', '')}",
+                        "pub_date": datetime.now().strftime("%Y-%m-%d"),
+                        "view_count": question.get("visit_count", 0),
+                        "heat_index": min(question.get("visit_count", 0) / 100, 100),
+                        "is_video": False,
+                        "event_type": event_type
+                    })
+        except Exception as e:
+            print(f"搜索知乎热点失败: {e}")
+            continue
+    
+    return events
+
+
+async def search_kr36_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从36氪搜索科技新闻"""
+    events = []
+    
+    try:
+        async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+            # 36氪搜索API
+            url = "https://36kr.com/api/search/mix"
+            params = {
+                "keyword": f"{major_name} 2025",
+                "page": 1,
+                "per_page": 5
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return events
+            
+            try:
+                data = response.json()
+            except:
+                return events
+            
+            items = data.get("data", {}).get("items", [])
+            for item in items[:3]:
+                title = item.get("title", "")
+                if not title:
+                    continue
+                
+                event_type = detect_event_type(title)
+                
+                events.append({
+                    "title": title,
+                    "description": item.get("description", "")[:200] if item.get("description") else "",
+                    "source": "36氪",
+                    "url": item.get("url", ""),
+                    "pub_date": item.get("publish_time", "")[:10] if item.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
+                    "view_count": item.get("view_count", 0),
+                    "heat_index": min(item.get("view_count", 0) / 100, 100),
+                    "is_video": False,
+                    "event_type": event_type
+                })
+    except Exception as e:
+        print(f"搜索36氪失败: {e}")
+    
+    return events
+
+
+async def search_huxiu_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从虎嗅搜索科技资讯"""
+    events = []
+    
+    try:
+        async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+            # 虎嗅搜索API
+            url = "https://www.huxiu.com/api.php"
+            params = {
+                "action": "search",
+                "keywords": f"{major_name} 2025",
+                "page": 1
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return events
+            
+            try:
+                data = response.json()
+            except:
+                return events
+            
+            articles = data.get("data", {}).get("articles", [])
+            for article in articles[:3]:
+                title = article.get("title", "")
+                if not title:
+                    continue
+                
+                event_type = detect_event_type(title)
+                
+                events.append({
+                    "title": title,
+                    "description": article.get("summary", "")[:200] if article.get("summary") else "",
+                    "source": "虎嗅",
+                    "url": article.get("url", ""),
+                    "pub_date": article.get("publish_time", "")[:10] if article.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
+                    "view_count": article.get("views", 0),
+                    "heat_index": min(article.get("views", 0) / 100, 100),
+                    "is_video": False,
+                    "event_type": event_type
+                })
+    except Exception as e:
+        print(f"搜索虎嗅失败: {e}")
+    
+    return events
+
+
+def detect_event_type(title: str) -> str:
+    """根据标题判断事件类型"""
+    title_lower = title.lower()
+    
+    if any(kw in title_lower for kw in ["突破", "发布", "发布", "首创", "首次", "攻克"]):
+        return "技术突破"
+    elif any(kw in title_lower for kw in ["政策", "规划", "战略", "发布", "出台"]):
+        return "政策变化"
+    elif any(kw in title_lower for kw in ["大会", "会议", "论坛", "峰会", "展会"]):
+        return "重要会议"
+    elif any(kw in title_lower for kw in ["融资", "上市", "收购", "投资", "收购"]):
+        return "行业动态"
+    elif any(kw in title_lower for kw in ["争议", "丑闻", "负面", "危机"]):
+        return "社会事件"
+    else:
+        return "行业动态"
+
+
+@app.get("/api/v1/video/professional-with-events/{major_name}")
+async def get_video_with_hot_events(major_name: str):
+    """
+    获取专业视频和热点事件
+    
+    返回最佳视频和相关的热点事件列表
+    视频/事件可以是B站视频链接，也可以是外部新闻链接
+    """
+    # 获取视频
+    video_response = await get_professional_videos(major_name)
+    
+    # 获取热点事件
+    hot_events_response = await get_hot_events(major_name)
+    
+    # 获取热门视频（用于热点视频区域）
+    hot_videos_data = await get_hot_videos(major_name, limit=5)
+    hot_videos = hot_videos_data.get("hot_videos", [])
+    
+    # 如果没有热门视频，使用主视频
+    best_video = video_response.get("video")
+    if not best_video and hot_videos:
+        best_video = hot_videos[0] if len(hot_videos) > 0 else None
+    
+    return {
+        "major_name": major_name,
+        "hot_video": best_video,
+        "hot_events": hot_events_response.get("events", [])[:10],
+        "generated_at": datetime.now().isoformat()
+    }
+
+
+@app.get("/api/v1/video/hot-videos/{major_name}")
+async def get_hot_videos(major_name: str, limit: int = Query(5, description="返回数量")):
+    """
+    获取专业相关的热门视频
+    
+    按播放量和发布时间排序，返回最新的热门视频
+    """
+    keywords = [
+        f"{major_name}最新",
+        f"{major_name}热门",
+        f"{major_name}新闻",
+        f"{major_name}2024",
+        f"{major_name}2025"
+    ]
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Referer": "https://www.bilibili.com"
+    }
+    
+    all_videos = []
+    
+    for keyword in keywords[:3]:
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
+                search_url = f"{BILIBILI_API}/x/web-interface/search/type"
+                params = {
+                    "search_type": "video",
+                    "keyword": keyword,
+                    "page": 1,
+                    "page_size": 5,
+                    "order": "click"  # 按播放量排序
+                }
+                
+                response = await client.get(search_url, params=params)
+                
+                if response.status_code != 200:
+                    continue
+                
+                try:
+                    data = response.json()
+                except:
+                    continue
+                
+                if data.get("code") != 0:
+                    continue
+                
+                for item in data.get("data", {}).get("result", []):
+                    if not isinstance(item, dict):
+                        continue
+                    
+                    title = item.get("title", "").replace("<em class=\"keyword\">", "").replace("</em>", "")
+                    if not title:
+                        continue
+                    
+                    # 解析时长
+                    duration_str = item.get("duration", "0:00")
+                    duration_parts = duration_str.split(":")
+                    try:
+                        duration_seconds = int(duration_parts[0]) * 60 + int(duration_parts[1])
+                    except:
+                        duration_seconds = 0
+                    
+                    # 解析发布时间
+                    pubdate = item.get("pubdate", 0)
+                    pubdate_str = datetime.fromtimestamp(pubdate).strftime("%Y-%m-%d") if pubdate else ""
+                    
+                    all_videos.append({
+                        "title": title,
+                        "description": item.get("description", ""),
+                        "cover": item.get("pic", ""),
+                        "duration": duration_seconds,
+                        "author": item.get("author", ""),
+                        "view_count": item.get("play", 0),
+                        "pubdate": pubdate,
+                        "pub_date": pubdate_str,
+                        "url": f"https://www.bilibili.com/video/{item.get('bvid', '')}",
+                        "source": "B站",
+                        "is_video": True
+                    })
+        except Exception as e:
+            print(f"搜索热门视频失败 {keyword}: {e}")
+            continue
+    
+    # 去重并按播放量排序
+    seen_titles = set()
+    unique_videos = []
+    for video in all_videos:
+        title = video["title"]
+        if title and title not in seen_titles:
+            seen_titles.add(title)
+            unique_videos.append(video)
+    
+    # 按播放量排序
+    unique_videos.sort(key=lambda x: x.get("view_count", 0), reverse=True)
+    
+    return {
+        "major_name": major_name,
+        "total": len(unique_videos),
+        "hot_videos": unique_videos[:limit],
+        "generated_at": datetime.now().isoformat()
+    }
 
 
 if __name__ == "__main__":

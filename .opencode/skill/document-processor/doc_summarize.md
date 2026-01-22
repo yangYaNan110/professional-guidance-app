@@ -14,6 +14,63 @@
 2. 时间线格式内容生成
 3. 热门专业自动识别
 4. 缓存策略优化
+5. 热点事件整合
+
+---
+
+## 热点事件整合
+
+在"现状与爆发"部分，应整合最新的热点事件：
+
+```python
+def generate_major_introduction(major_name: str, category: str) -> Dict:
+    """生成专业介绍，包含热点事件"""
+    
+    # 获取热点事件
+    hot_events = get_hot_events(major_name)
+    
+    # 生成时间线内容
+    introduction_parts = []
+    
+    # 起源与发展
+    introduction_parts.append(generate_origin_section(major_name))
+    
+    # 挫折与争议
+    introduction_parts.append(generate_challenges_section(major_name))
+    
+    # 重大突破
+    introduction_parts.append(generate_breakthroughs_section(major_name))
+    
+    # 现状与爆发（整合热点事件）
+    current_status = generate_current_status_section(major_name)
+    
+    # 添加热点事件
+    if hot_events:
+        hot_events_text = "\n\n**近期热点事件**\n"
+        for event in hot_events[:3]:  # 添加前3个热点
+            hot_events_text += f"- {event['pub_date']}：{event['title']}（{event['source']}）\n"
+        
+        current_status += hot_events_text
+    
+    introduction_parts.append(current_status)
+    
+    # 未来展望
+    introduction_parts.append(generate_future_section(major_name))
+    
+    return {
+        "introduction": "\n\n".join(introduction_parts),
+        "hot_events": hot_events,
+        "generated_at": datetime.now().isoformat()
+    }
+```
+
+### 热点事件示例
+
+| 类型 | 示例 |
+|-----|------|
+| 技术突破 | "2024年，OpenAI发布GPT-4o，引发行业轰动" |
+| 行业动态 | "2024年，某AI公司上市，市值突破1000亿" |
+| 政策变化 | "2024年，国家发布人工智能发展规划" |
 
 ---
 

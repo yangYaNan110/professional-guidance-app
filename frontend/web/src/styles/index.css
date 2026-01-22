@@ -118,3 +118,18 @@ body {
 [data-theme="dark"] .btn-secondary:hover {
   background-color: #4b5563;
 }
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 平滑滚动 */
+.scrollbar-hide {
+  scroll-behavior: smooth;
+}

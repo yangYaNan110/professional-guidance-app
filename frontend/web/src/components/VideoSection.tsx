@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
-interface VideoItem {
-  bvid: string;
-  title: string;
+interface {
+  title: HotItem string;
   description: string;
-  cover: string;
-  duration: number;
-  author: string;
+  cover?: string;
+  duration?: number;
+  author?: string;
   view_count: number;
-  pubdate: number;
+  pub_date: string;
   url: string;
+  source: string;
+  is_video: boolean;
+  event_type?: string;
 }
 
 interface VideoSectionProps {
@@ -32,193 +34,381 @@ const formatViewCount = (count: number): string => {
   return count.toString();
 };
 
-const formatDate = (timestamp: number): string => {
-  const date = new Date(timestamp * 1000);
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+const getEventTypeIcon = (type: string): string => {
+  const icons: Record<string, string> = {
+    "技术突破": "🚀",
+    "行业动态": "📈",
+    "政策变化": "📋",
+    "重要会议": "🎤",
+    "社会事件": "🔥",
+    "视频内容": "🎬",
+    "新闻资讯": "📰"
+  };
+  return icons[type] || "📌";
+};
+
+const getEventTypeColor = (type: string): string => {
+  const colors: Record<string, string> = {
+    "技术突破": "from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-800",
+    "行业动态": "from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-800",
+    "政策变化": "from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 border-purple-200 dark:border-purple-800",
+    "重要会议": "from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border-orange-200 dark:border-orange-800",
+    "社会事件": "from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 border-red-200 dark:border-red-800",
+    "视频内容": "from-pink-50 to-rose-50 dark:from-pink-900/30 dark:to-rose-900/30 border-pink-200 dark:border-pink-800",
+    "新闻资讯": "from-cyan-50 to-sky-50 dark:from-cyan-900/30 dark:to-sky-900/30 border-cyan-200 dark:border-cyan-800"
+  };
+  return colors[type] || "from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-600";
 };
 
 const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
-  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [hotVideo, setHotVideo] = useState<HotItem | null>(null);
+  const [hotEvents, setHotEvents] = useState<HotItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${VIDEO_SERVICE_URL}/api/v1/video/professional/${encodeURIComponent(majorName)}`);
+        // 获取热门视频和热点事件
+        const response = await fetch(`${VIDEO_SERVICE_URL}/api/v1/video/professional-with-events/${encodeURIComponent(majorName)}`);
         
         if (!response.ok) {
-          throw new Error('获取视频失败');
+          throw new Error('获取数据失败');
         }
         
         const data = await response.json();
-        setVideos(data.videos || []);
+        setHotVideo(data.hot_video);
+        setHotEvents(data.hot_events || []);
       } catch (err) {
-        console.error('获取视频失败:', err);
-        setError('视频功能暂时不可用');
+        console.error('获取数据失败:', err);
+        setError('数据加载失败');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVideos();
+    fetchData();
   }, [majorName]);
+
+  // 自动滚动热点事件
+  useEffect(() => {
+    if (hotEvents.length <= 3 || !scrollRef.current || isPaused) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+
+    const scrollContainer = scrollRef.current;
+    let scrollPos = 0;
+    const scrollSpeed = 0.5;
+
+    const animate = () => {
+      if (!scrollContainer || isPaused) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      scrollPos += scrollSpeed;
+      
+      const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+      
+      if (scrollPos >= maxScroll) {
+        scrollPos = 0;
+      }
+      
+      scrollContainer.scrollLeft = scrollPos;
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [hotEvents.length, isPaused]);
 
   if (loading) {
     return (
       <div className="mt-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>🎬</span> 相关视频
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-40 mb-3"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-            </div>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-lg">🔥</span>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">热门内容</h3>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-xl h-64"></div>
+          <div className="lg:col-span-1 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-xl h-64"></div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || (!hotVideo && hotEvents.length === 0)) {
     return (
       <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-        <p className="text-sm text-gray-600 dark:text-gray-400">🎬 {error}</p>
-      </div>
-    );
-  }
-
-  if (videos.length === 0) {
-    return (
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-        <p className="text-sm text-gray-600 dark:text-gray-400">🎬 暂无相关视频</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">🔥 暂无热门内容</p>
       </div>
     );
   }
 
   return (
     <div className="mt-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-        <span>🎬</span> 相关视频
-        <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({videos.length}个视频)</span>
-      </h3>
+      {/* 标题 */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-lg">🔥</span>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">热门内容</h3>
+        <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+          {hotVideo ? '最新最热' : ''}
+        </span>
+      </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {videos.map((video, index) => (
-          <motion.div
-            key={video.bvid}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => setSelectedVideo(video)}
-          >
-            <div className="relative">
-              <img
-                src={video.cover}
-                alt={video.title}
-                className="w-full h-40 object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/320x180?text=Video';
-                }}
-              />
-              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                {formatDuration(video.duration)}
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/30">
-                <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 热门视频/内容区域 */}
+        <div className="lg:col-span-2">
+          {hotVideo ? (
+            <motion.a
+              href={hotVideo.is_video ? (showPlayer ? undefined : hotVideo.url) : hotVideo.url}
+              target={hotVideo.is_video && !showPlayer ? "_blank" : undefined}
+              rel="noopener noreferrer"
+              onClick={hotVideo.is_video ? () => setShowPlayer(true) : undefined}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="block bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 group"
+            >
+              {/* 封面 */}
+              <div className="relative">
+                {hotVideo.cover ? (
+                  <img
+                    src={hotVideo.cover}
+                    alt={hotVideo.title}
+                    className="w-full h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/640x360?text=Hot+Content';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-64 bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                    <span className="text-6xl">🔥</span>
+                  </div>
+                )}
+                
+                {/* 遮罩层 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                
+                {/* 播放按钮（如果是视频） */}
+                {hotVideo.is_video && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <motion.div 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-20 h-20 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-xl"
+                    >
+                      <svg className="w-10 h-10 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </motion.div>
+                  </div>
+                )}
+                
+                {/* 标签 */}
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  {hotVideo.is_video ? (
+                    <span className="bg-pink-500 text-white text-xs px-2.5 py-1 rounded-md font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.813 4.653h2.334c.63 0 1.143.513 1.143 1.143v12.375c0 .63-.513 1.143-1.143 1.143H4.653c-.63 0-1.143-.513-1.143-1.143V5.796c0-.63.513-1.143 1.143-1.143h2.334c.315 0 .62.13.843.358l4.394 4.415c.228.228.538.358.843.358h.002c.305 0 .615-.13.843-.358l4.394-4.415c.223-.228.528-.358.843-.358z"/>
+                      </svg>
+                      热门视频
+                    </span>
+                  ) : (
+                    <span className="bg-cyan-500 text-white text-xs px-2.5 py-1 rounded-md font-medium flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                      </svg>
+                      热门资讯
+                    </span>
+                  )}
+                </div>
+                
+                {/* 时长（如果是视频） */}
+                {hotVideo.is_video && hotVideo.duration && (
+                  <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-sm px-2.5 py-1 rounded-md font-medium">
+                    {formatDuration(hotVideo.duration)}
+                  </div>
+                )}
+                
+                {/* 标题 */}
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <h4 className="text-white font-semibold text-lg leading-snug line-clamp-2 drop-shadow-lg">
+                    {hotVideo.title}
+                  </h4>
                 </div>
               </div>
+              
+              {/* 底部信息 */}
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                      </svg>
+                      {formatViewCount(hotVideo.view_count)}
+                    </span>
+                    {hotVideo.author && (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        {hotVideo.author}
+                      </span>
+                    )}
+                    <span>{hotVideo.pub_date}</span>
+                  </div>
+                  
+                  <span className="text-sm text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                    {hotVideo.source}
+                    <svg className="-4" fill="none" strokew-4 h="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </motion.a>
+          ) : null}
+        </div>
+
+        {/* 热点事件列表 */}
+        <div className="lg:col-span-1">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 h-full flex flex-col">
+            {/* 标题 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
+              <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="text-lg">📰</span>
+                热点资讯
+              </h4>
+              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                {hotEvents.length}条
+              </span>
             </div>
             
-            <div className="p-3">
-              <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-2 mb-2">
-                {video.title}
-              </h4>
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                  </svg>
-                  {formatViewCount(video.view_count)}
-                </span>
-                <span>{video.author}</span>
-                <span>{formatDate(video.pubdate)}</span>
-              </div>
+            {/* 热点事件列表 - 可滚动 */}
+            <div 
+              ref={scrollRef}
+              className="flex-1 overflow-x-hidden p-4 space-y-3 scrollbar-hide"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+            >
+              {hotEvents.length > 0 ? (
+                hotEvents.map((event, index) => (
+                  <motion.a
+                    key={index}
+                    href={event.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                    className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block`}
+                  >
+                    {/* 图标 */}
+                    <div className="flex-shrink-0 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-lg flex items-center justify-center text-xl shadow-sm">
+                      {event.is_video ? '🎬' : getEventTypeIcon(event.event_type || '新闻资讯')}
+                    </div>
+                    
+                    {/* 内容 */}
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1.5 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                        {event.title}
+                      </h5>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                          </svg>
+                          {event.source}
+                        </span>
+                        <span>•</span>
+                        <span>{event.pub_date}</span>
+                        {event.view_count > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{formatViewCount(event.view_count)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 箭头 */}
+                    <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                      </svg>
+                    </div>
+                  </motion.a>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    暂无热点资讯
+                  </p>
+                </div>
+              )}
             </div>
-          </motion.div>
-        ))}
+            
+            {/* 底部来源 */}
+            <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                数据来源：B站、知乎等平台 • 点击查看原文
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* 视频详情弹窗 */}
-      {selectedVideo && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVideo(null)}>
+      {/* 视频播放弹窗 */}
+      {showPlayer && hotVideo && hotVideo.is_video && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPlayer(false)}
+        >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden w-full max-w-2xl"
+            className="relative w-full max-w-5xl bg-black rounded-lg overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 dark:text-white">视频详情</h3>
-              <button
-                onClick={() => setSelectedVideo(null)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <div className="relative" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                src={`//player.bilibili.com/player.html?bvid=${hotVideo.url.split('/').pop()}&page=1&high_quality=1&danmaku=0`}
+                className="absolute inset-0 w-full h-full"
+                allowFullScreen
+                scrolling="no"
+              />
             </div>
             
-            <div className="p-4">
-              <div className="relative bg-black rounded-lg overflow-hidden mb-4" style={{ paddingTop: '56.25%' }}>
-                <iframe
-                  src={`//player.bilibili.com/player.html?bvid=${selectedVideo.bvid}&page=1&high_quality=1`}
-                  className="absolute inset-0 w-full h-full"
-                  allowFullScreen
-                  scrolling="no"
-                />
-              </div>
-              
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{selectedVideo.title}</h4>
-              
-              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                <span className="flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                  </svg>
-                  {formatViewCount(selectedVideo.view_count)}播放
-                </span>
-                <span>{selectedVideo.author}</span>
-                <span>{formatDuration(selectedVideo.duration)}</span>
-              </div>
-              
-              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
-                {selectedVideo.description}
-              </p>
-              
-              <a
-                href={selectedVideo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 dark:text-primary-400 text-sm font-medium"
-              >
-                在B站观看完整视频
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowPlayer(false)}
+              className="absolute top-3 right-3 w-10 h-10 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </motion.button>
+            
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">
+              <h4 className="text-white font-medium">{hotVideo.title}</h4>
             </div>
           </motion.div>
         </div>
