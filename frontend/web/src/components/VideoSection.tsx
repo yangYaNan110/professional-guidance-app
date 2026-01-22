@@ -68,7 +68,6 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
   const [showPlayer, setShowPlayer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,43 +95,31 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
     fetchData();
   }, [majorName]);
 
-  // 自动滚动热点事件（垂直滚动）
+  // 自动滚动热点事件（垂直无缝滚动）
   useEffect(() => {
     if (hotEvents.length <= 3 || !scrollRef.current || isPaused) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
       return;
     }
 
     const scrollContainer = scrollRef.current;
-    let scrollPos = 0;
-    const scrollSpeed = 0.5;
-
-    const animate = () => {
-      if (!scrollContainer || isPaused) {
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
-
-      scrollPos += scrollSpeed;
-      const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
-      
-      if (scrollPos >= maxScroll) {
-        scrollPos = 0;
-      }
-      
-      scrollContainer.scrollTop = scrollPos;
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
+    
+    // 清除之前的动画
+    scrollContainer.style.animation = 'none';
+    
+    // 计算总高度：每个item约85px + 12px间距
+    const itemHeight = 85;
+    const gap = 12;
+    const singleItemHeight = itemHeight + gap;
+    const totalHeight = hotEvents.length * singleItemHeight;
+    
+    // 计算滚动时间：总高度 / 速度
+    const scrollDuration = totalHeight / 30; // 速度调整为每秒30px
+    
+    // 使用CSS动画实现无缝滚动
+    scrollContainer.style.animation = `scrollUp ${scrollDuration}s linear infinite`;
+    
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      scrollContainer.style.animation = 'none';
     };
   }, [hotEvents.length, isPaused]);
 
@@ -293,28 +280,81 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           {/* 热点列表 - 固定高度，超出滚动 */}
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 scrollbar-hide"
+            className="flex-1 overflow-hidden p-4"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
-            {hotEvents.length > 0 ? (
-              hotEvents.map((event, index) => (
+            <div className="scroll-content">
+              {hotEvents.length > 0 ? (
+                hotEvents.map((event, index) => (
+                  <motion.a
+                    key={`first-${index}`}
+                    href={event.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3`}
+                  >
+                    {/* 图标 */}
+                    <div className="flex-shrink-0 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-lg flex items-center justify-center text-xl shadow-sm">
+                      {event.is_video ? '🎬' : getEventTypeIcon(event.event_type || '新闻资讯')}
+                    </div>
+                    
+                    {/* 内容 */}
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1.5 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                        {event.title}
+                      </h5>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                          </svg>
+                          {event.source}
+                        </span>
+                        <span>•</span>
+                        <span>{event.pub_date}</span>
+                        {event.view_count > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{formatViewCount(event.view_count)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 箭头 */}
+                    <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                      </svg>
+                    </div>
+                  </motion.a>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <span className="text-4xl mb-2 block">📰</span>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">暂无热点资讯</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* 复制一份热点事件，实现无缝滚动 */}
+              {hotEvents.length > 0 && hotEvents.map((event, index) => (
                 <motion.a
-                  key={index}
+                  key={`second-${index}`}
                   href={event.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block`}
+                  className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3`}
                 >
-                  {/* 图标 */}
                   <div className="flex-shrink-0 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-lg flex items-center justify-center text-xl shadow-sm">
                     {event.is_video ? '🎬' : getEventTypeIcon(event.event_type || '新闻资讯')}
                   </div>
                   
-                  {/* 内容 */}
                   <div className="flex-1 min-w-0">
                     <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1.5 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                       {event.title}
@@ -337,32 +377,46 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                     </div>
                   </div>
                   
-                  {/* 箭头 */}
                   <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
                     </svg>
                   </div>
                 </motion.a>
-              ))
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <span className="text-4xl mb-2 block">📰</span>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">暂无热点资讯</p>
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
           
           {/* 底部来源 */}
           <div className="flex-shrink-0 p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-              数据来源：B站、知乎、36氪、虎嗅等平台 • 点击查看原文
+              数据来源：B站、微博、今日头条、腾讯新闻 • 点击查看原文
             </p>
           </div>
         </motion.div>
       </div>
+
+      {/* CSS动画样式 */}
+      <style>{`
+        .scroll-content {
+          display: flex;
+          flex-direction: column;
+          animation: scrollUp 60s linear infinite;
+        }
+        
+        .scroll-content:hover {
+          animation-play-state: paused;
+        }
+        
+        @keyframes scrollUp {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(-50%);
+          }
+        }
+      `}</style>
 
       {/* 视频播放弹窗 */}
       {showPlayer && introVideo && introVideo.is_video && (
