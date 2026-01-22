@@ -62,3 +62,6 @@ yarn-error.log*
 .cache/
 .parcel-cache/
 .eslintcache
+
+#debug
+debug/

@@ -7,26 +7,46 @@
   --accent-color: #d946ef;
 }
 
-[data-theme="light"] {
-  --bg-primary: #f9fafb;
-  --bg-secondary: #ffffff;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
+* {
+  box-sizing: border-box;
 }
 
-[data-theme="dark"] {
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --border-color: #374151;
+html, body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb;
+}
+
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 移动端响应式 */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .card {
+    padding: 16px;
+    margin-left: -16px;
+    margin-right: -16px;
+    border-radius: 0;
+  }
 }
 
 /* 深色模式样式 */
