@@ -310,6 +310,56 @@ class MajorDataManager:
         conn.close()
         return urls
     
+    def get_subject_data_count(self, category: str) -> int:
+        """获取某个学科的数据条数"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM major_market_data WHERE category = ?", (category,))
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    
+    def get_subjects_needing_data(self, min_data: int = 10) -> List[str]:
+        """获取需要补充数据的学科列表"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT category FROM major_market_data 
+            GROUP BY category 
+            HAVING COUNT(*) < ?
+        ''', (min_data,))
+        
+        # 获取当前有数据的学科中，数据不足的
+        subjects_with_insufficient_data = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        # 获取所有配置的学科
+        all_subjects = set(quota_manager.SUBJECT_QUOTAS.keys())
+        existing_subjects = set(subjects_with_insufficient_data)
+        
+        # 找出完全没有数据的学科
+        missing_subjects = all_subjects - existing_subjects
+        
+        return list(missing_subjects) + subjects_with_insufficient_data
+    
+    def ensure_min_data_for_all_subjects(self, min_data: int = 10) -> Dict[str, int]:
+        """确保每个学科至少有min_data条数据
+        
+        Returns:
+            补充数据的统计信息
+        """
+        subjects_needing = self.get_subjects_needing_data(min_data)
+        if not subjects_needing:
+            return {"status": "ok", "message": "所有学科数据充足"}
+        
+        result = {
+            "status": "need_crawl",
+            "subjects_needing": subjects_needing,
+            "min_data_required": min_data
+        }
+        
+        return result
+    
     def batch_insert(self, data: List[Dict]):
         """批量插入数据"""
         return self.save_crawled_data(data)

@@ -273,43 +273,101 @@ class MajorDataCrawler:
 
 
 # 模拟数据生成函数（用于测试）
-def generate_mock_data(count: int = 10) -> List[Dict]:
-    """生成模拟数据用于测试"""
-    majors = [
-        {"name": "计算机科学与技术", "category": "工学"},
-        {"name": "人工智能", "category": "工学"},
-        {"name": "数据科学与大数据技术", "category": "理学"},
-        {"name": "软件工程", "category": "工学"},
-        {"name": "金融学", "category": "经济学"},
-        {"name": "临床医学", "category": "医学"},
-        {"name": "法学", "category": "法学"},
-        {"name": "电子信息工程", "category": "工学"},
-        {"name": "会计学", "category": "管理学"},
-        {"name": "英语", "category": "文学"},
-    ]
+def generate_mock_data(count: int = 10, categories: List[str] = None) -> List[Dict]:
+    """生成模拟数据用于测试
+    
+    确保所有配置的学科都有至少10条数据
+    """
+    # 所有配置的学科及其代表专业
+    all_majors = {
+        "工学": [
+            "计算机科学与技术", "软件工程", "人工智能", "电子信息工程", 
+            "机械工程", "自动化", "通信工程", "土木工程", "建筑学", "材料科学"
+        ],
+        "理学": [
+            "数学与应用数学", "物理学", "化学", "数据科学与大数据技术",
+            "生物科学", "心理学", "统计学", "信息与计算科学", "地理科学", "应用化学"
+        ],
+        "经济学": [
+            "金融学", "经济学", "国际经济与贸易", "财政学",
+            "投资学", "保险学", "税务学", "信用管理", "贸易经济", "国民经济管理"
+        ],
+        "管理学": [
+            "会计学", "工商管理", "市场营销", "财务管理",
+            "人力资源管理", "电子商务", "物流管理", "旅游管理", "工程管理", "公共事业管理"
+        ],
+        "医学": [
+            "临床医学", "口腔医学", "中医学", "药学",
+            "护理学", "医学影像学", "预防医学", "麻醉学", "儿科学", "精神病学"
+        ],
+        "法学": [
+            "法学", "知识产权", "社会学", "社会工作",
+            "政治学与行政学", "国际关系", "思想政治教育", "侦查学", "边防管理", "消防指挥"
+        ],
+        "文学": [
+            "英语", "汉语言文学", "新闻学", "广告学",
+            "日语", "法语", "传播学", "编辑出版学", "翻译", "广播电视学"
+        ],
+        "教育学": [
+            "教育学", "学前教育", "小学教育", "体育教育",
+            "特殊教育", "教育技术学", "运动训练", "人文教育", "艺术教育", "社会体育"
+        ],
+        "哲学": [
+            "哲学", "逻辑学", "宗教学", "伦理学",
+            "美学", "科学技术哲学", "外国哲学", "中国哲学", "马克思主义哲学", "宗教学"
+        ],
+        "历史学": [
+            "历史学", "世界史", "考古学", "文物与博物馆学",
+            "外国语言与外国历史", "文物保护技术", "博物馆学", "文化遗产", "历史文献学", "中国古代史"
+        ],
+        "艺术学": [
+            "音乐学", "美术学", "设计学", "戏剧与影视学",
+            "舞蹈学", "广播电视编导", "戏剧影视文学", "摄影", "动画", "作曲与作曲技术理论"
+        ],
+        "农学": [
+            "农学", "园艺", "植物保护", "农业资源与环境",
+            "动物科学", "动物医学", "林学", "园林", "水土保持与荒漠化防治", "草业科学"
+        ],
+        "军事学": [
+            "军事思想及军事历史", "战役学", "战术学", "军队指挥学",
+            "军事组织编制学", "军队管理学", "战略学", "军事管理学", "军事后勤学", "军事装备学"
+        ]
+    }
     
     data = []
-    for i in range(count):
-        major = majors[i % len(majors)]
-        data.append({
-            "title": f"{major['name']}专业2024年招生及就业分析",
-            "major_name": major["name"],
-            "category": major["category"],
-            "source_url": f"https://example.com/major/{i}",
-            "source_website": "测试数据",
-            "employment_rate": random.uniform(80, 100),
-            "avg_salary": f"{random.randint(12, 30)}K-{random.randint(30, 50)}K/月",
-            "admission_score": random.randint(550, 680),
-            "heat_index": random.uniform(70, 100),
-            "trend_data": {
-                "2021": random.randint(80, 95),
-                "2022": random.randint(82, 96),
-                "2023": random.randint(85, 97),
-                "2024": random.randint(87, 100)
-            },
-            "description": f"{major['name']}专业介绍...",
-            "courses": ["课程1", "课程2", "课程3"],
-            "career_prospects": f"{major['name']}专业就业前景..."
-        })
+    
+    # 如果指定了categories，只生成这些类别的数据
+    if categories:
+        target_categories = categories
+    else:
+        target_categories = list(all_majors.keys())
+    
+    # 为每个学科生成至少10条数据
+    for category in target_categories:
+        majors = all_majors.get(category, ["通用专业"])
+        for i, major_name in enumerate(majors[:10]):  # 每个学科至少10条
+            employment_rate = random.uniform(75, 100)
+            heat_index = random.uniform(60, 100)
+            
+            data.append({
+                "title": f"{major_name}专业2024年招生及就业分析",
+                "major_name": major_name,
+                "category": category,
+                "source_url": f"https://example.com/{category}/{i}",
+                "source_website": "模拟数据",
+                "employment_rate": round(employment_rate, 1),
+                "avg_salary": f"{random.randint(10, 25)}K-{random.randint(25, 40)}K/月",
+                "admission_score": random.randint(500, 680),
+                "heat_index": round(heat_index, 1),
+                "trend_data": {
+                    "2021": random.randint(70, 95),
+                    "2022": random.randint(72, 96),
+                    "2023": random.randint(75, 97),
+                    "2024": random.randint(77, 100)
+                },
+                "description": f"{major_name}专业培养具备{major_name}理论基础和实践能力的高级专门人才。",
+                "courses": ["专业基础课", "专业核心课", "专业选修课", "实践课程"],
+                "career_prospects": f"{major_name}专业毕业生就业前景广阔，可在相关领域从事研究、开发、管理等工作。"
+            })
     
     return data

@@ -1,11 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+interface Stats {
+  total: number;
+  categories: { name: string; count: number }[];
+  last_crawl: string;
+}
+
+const API_BASE = 'http://localhost:8004';
+
 const HomePage: React.FC = () => {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/major/market-data/stats`);
+        if (!response.ok) throw new Error('获取统计数据失败');
+        const data = await response.json();
+        setStats({
+          total: data.total || 0,
+          categories: data.by_category || [],
+          last_crawl: data.last_crawl || ''
+        });
+      } catch (err) {
+        console.error('获取统计数据失败:', err);
+        setError(err instanceof Error ? err.message : '未知错误');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="space-y-8 sm:space-y-12">
-      {/* Hero Section */}
       <section className="text-center py-8 sm:py-16 px-4">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
@@ -27,7 +59,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 功能特性 */}
       <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 px-4">
         <FeatureCard
           emoji="🎤"
@@ -46,15 +77,24 @@ const HomePage: React.FC = () => {
         />
       </section>
 
-      {/* 数据展示 */}
       <section className="card mx-4">
         <h2 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6">📈 专业选择概览</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
-          <StatCard label="在招专业" value="500+" />
-          <StatCard label="合作院校" value="200+" />
-          <StatCard label="学生咨询" value="10,000+" />
-          <StatCard label="满意度" value="95%" />
-        </div>
+        {error ? (
+          <div className="text-center py-4 text-gray-500">
+            <p>⚠️ {error}</p>
+          </div>
+        ) : loading ? (
+          <div className="text-center py-4 text-gray-500">
+            <p>加载中...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+            <StatCard label="在招专业" value={String(stats?.total || 0)} />
+            <StatCard label="学科门类" value={String(stats?.categories?.length || 0)} />
+            <StatCard label="学生咨询" value="10,000+" />
+            <StatCard label="数据来源" value="阳光高考" />
+          </div>
+        )}
       </section>
     </div>
   );

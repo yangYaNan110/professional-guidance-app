@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
-interface Major {
-  id: string;
-  name: string;
-  category: string;
-  duration: string;
-  courses: string[];
-  employmentRate: string;
-  avgSalary: string;
-  matchScore: number;
-}
-
 interface Category {
   id: number;
   name: string;
@@ -32,11 +21,23 @@ interface MarketData {
   courses: string[];
 }
 
+interface Major {
+  id: string;
+  name: string;
+  category: string;
+  duration: string;
+  courses: string[];
+  employmentRate: string;
+  avgSalary: string;
+  matchScore: number;
+  crawled_at: string;
+}
+
 const SORT_OPTIONS = [
-  { value: 'matchScore', label: '综合排序' },
+  { value: 'heat_index', label: '综合排序（热度优先）' },
   { value: 'employmentRate', label: '就业率' },
   { value: 'avgSalary', label: '薪资' },
-  { value: 'heatIndex', label: '热度' }
+  { value: 'crawled_at', label: '最新更新' }
 ];
 
 const API_BASE = 'http://localhost:8004';
@@ -45,101 +46,106 @@ const MajorsPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [majors, setMajors] = useState<Major[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('全部学科');
-  const [selectedSort, setSelectedSort] = useState('matchScore');
+  const [selectedSort, setSelectedSort] = useState('heat_index');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  
+  const PAGE_SIZE = 20;
 
   // 从后端API获取学科列表
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/v1/major/categories`);
+        if (!response.ok) throw new Error('获取学科列表失败');
         const data = await response.json();
         setCategories(data.categories || []);
-      } catch (error) {
-        console.error('获取学科列表失败:', error);
+      } catch (err) {
+        console.error('获取学科列表失败:', err);
+        setError(err instanceof Error ? err.message : '未知错误');
       }
     };
     fetchCategories();
   }, []);
 
-  // 从后端API获取专业列表
-  useEffect(() => {
-    const fetchMajors = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/api/v1/major/market-data?page_size=100`);
-        const data = await response.json();
-        
-        // 转换后端数据格式
-        const convertedMajors: Major[] = (data.data || []).map((item: MarketData) => ({
-          id: String(item.id),
-          name: item.major_name || item.title,
-          category: item.category || '未知',
-          duration: '4年',
-          courses: item.courses || [],
-          employmentRate: item.employment_rate ? `${item.employment_rate}%` : '暂无数据',
-          avgSalary: item.avg_salary || '暂无数据',
-          matchScore: item.heat_index || Math.floor(Math.random() * 30 + 60)
-        }));
-        
+  // 从后端API获取专业列表（分页）
+  const fetchMajors = async (page: number, isLoadMore: boolean = false) => {
+    try {
+      if (isLoadMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      
+      const categoryParam = selectedCategory !== '全部学科' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+      const sortField = selectedSort === 'heat_index' || selectedSort === 'matchScore' ? 'heat_index' : 
+                        selectedSort === 'employmentRate' ? 'employment_rate' : 
+                        selectedSort === 'crawled_at' ? 'crawled_at' : 'heat_index';
+      const order = 'desc';
+      
+      const response = await fetch(
+        `${API_BASE}/api/v1/major/market-data?page=${page}&page_size=${PAGE_SIZE}&sort_by=${sortField}&order=${order}${categoryParam}`
+      );
+      
+      if (!response.ok) throw new Error('获取专业列表失败');
+      const data = await response.json();
+      
+      const convertedMajors: Major[] = (data.data || []).map((item: MarketData) => ({
+        id: String(item.id),
+        name: item.major_name || item.title,
+        category: item.category || '未知',
+        duration: '4年',
+        courses: item.courses || [],
+        employmentRate: item.employment_rate ? `${item.employment_rate}%` : '暂无数据',
+        avgSalary: item.avg_salary || '暂无数据',
+        matchScore: item.heat_index || Math.floor(Math.random() * 30 + 60),
+        crawled_at: item.crawled_at || new Date().toISOString()
+      }));
+      
+      if (isLoadMore) {
+        setMajors(prev => [...prev, ...convertedMajors]);
+      } else {
         setMajors(convertedMajors);
-      } catch (error) {
-        console.error('获取专业列表失败:', error);
-        // 如果API不可用，使用备用数据
-        setMajors(getBackupMajors());
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchMajors();
-  }, []);
-
-  // 备用专业数据（API不可用时）
-  const getBackupMajors = (): Major[] => [
-    { id: '1', name: '计算机科学与技术', category: '工学', duration: '4年', courses: ['数据结构', '算法', '操作系统'], employmentRate: '95%', avgSalary: '18K-25K/月', matchScore: 95 },
-    { id: '2', name: '人工智能', category: '工学', duration: '4年', courses: ['机器学习', '深度学习', 'NLP'], employmentRate: '98%', avgSalary: '25K-35K/月', matchScore: 88 },
-    { id: '3', name: '数据科学与大数据技术', category: '理学', duration: '4年', courses: ['数据分析', '大数据处理'], employmentRate: '92%', avgSalary: '20K-30K/月', matchScore: 82 },
-    { id: '4', name: '软件工程', category: '工学', duration: '4年', courses: ['软件测试', '项目管理'], employmentRate: '94%', avgSalary: '18K-28K/月', matchScore: 79 },
-    { id: '5', name: '金融学', category: '经济学', duration: '4年', courses: ['货币银行学', '投资学'], employmentRate: '90%', avgSalary: '15K-25K/月', matchScore: 75 },
-    { id: '6', name: '临床医学', category: '医学', duration: '5年', courses: ['人体解剖学', '生理学'], employmentRate: '100%', avgSalary: '15K-30K/月', matchScore: 70 },
-    { id: '7', name: '法学', category: '法学', duration: '4年', courses: ['法理学', '宪法学'], employmentRate: '85%', avgSalary: '12K-20K/月', matchScore: 68 },
-    { id: '8', name: '英语', category: '文学', duration: '4年', courses: ['高级英语', '翻译'], employmentRate: '88%', avgSalary: '10K-18K/月', matchScore: 65 },
-    { id: '9', name: '教育学', category: '教育学', duration: '4年', courses: ['教育心理学', '课程论'], employmentRate: '92%', avgSalary: '10K-15K/月', matchScore: 62 },
-    { id: '10', name: '会计学', category: '管理学', duration: '4年', courses: ['财务会计', '审计学'], employmentRate: '93%', avgSalary: '12K-20K/月', matchScore: 72 }
-  ];
-
-  // 过滤和排序后的专业列表
-  const filteredAndSortedMajors = useMemo(() => {
-    let result = [...majors];
-
-    if (selectedCategory !== '全部学科') {
-      result = result.filter(major => major.category === selectedCategory);
+      
+      setCurrentPage(page);
+      setTotalPages(data.pagination?.total_pages || 1);
+      setHasMore(page < (data.pagination?.total_pages || 1));
+      setError(null);
+    } catch (err) {
+      console.error('获取专业列表失败:', err);
+      setError(err instanceof Error ? err.message : '未知错误');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
+  };
 
-    result.sort((a, b) => {
-      switch (selectedSort) {
-        case 'employmentRate':
-          return parseFloat(b.employmentRate) - parseFloat(a.employmentRate);
-        case 'avgSalary':
-          const salaryA = parseInt(a.avgSalary);
-          const salaryB = parseInt(b.avgSalary);
-          return salaryB - salaryA;
-        case 'heatIndex':
-          return b.matchScore - a.matchScore;
-        default:
-          return b.matchScore - a.matchScore;
-      }
-    });
+  // 初始加载或切换学科/排序时重新加载
+  useEffect(() => {
+    fetchMajors(1, false);
+  }, [selectedCategory, selectedSort]);
 
-    return result;
-  }, [majors, selectedCategory, selectedSort]);
+  // 加载更多专业
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchMajors(currentPage + 1, true);
+    }
+  };
 
+  // 计算统计数据
   const stats = useMemo(() => {
-    const count = filteredAndSortedMajors.length;
-    const avgEmployment = count > 0
-      ? (filteredAndSortedMajors.reduce((sum, m) => sum + parseFloat(m.employmentRate), 0) / count).toFixed(1)
-      : 0;
+    const count = majors.length;
+    const validMajors = majors.filter(m => m.employmentRate !== '暂无数据');
+    const avgEmployment = validMajors.length > 0
+      ? (validMajors.reduce((sum, m) => sum + parseFloat(m.employmentRate), 0) / validMajors.length).toFixed(1)
+      : '0';
     return { count, avgEmployment };
-  }, [filteredAndSortedMajors]);
+  }, [majors]);
 
   return (
     <div className="mx-4">
@@ -178,17 +184,25 @@ const MajorsPage: React.FC = () => {
         </div>
       )}
 
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 rounded-lg">
+          <p className="text-sm text-red-700">
+            ⚠️ {error}
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4">
         {loading ? (
           <div className="text-center py-8 text-gray-500">
             <p>加载中...</p>
           </div>
-        ) : filteredAndSortedMajors.length === 0 ? (
+        ) : majors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>暂无该学科的专业数据</p>
+            <p>暂无专业数据</p>
           </div>
         ) : (
-          filteredAndSortedMajors.map((major, index) => (
+          majors.map((major, index) => (
             <motion.div
               key={major.id}
               initial={{ opacity: 0, y: 20 }}
@@ -232,11 +246,21 @@ const MajorsPage: React.FC = () => {
         )}
       </div>
 
-      {!loading && filteredAndSortedMajors.length > 0 && (
+      {!loading && majors.length > 0 && (
         <div className="mt-6 text-center">
-          <button className="btn-secondary text-sm py-2 px-6">
-            加载更多专业
-          </button>
+          {hasMore ? (
+            <button 
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="btn-secondary text-sm py-2 px-6 disabled:opacity-50"
+            >
+              {loadingMore ? '加载中...' : '加载更多专业'}
+            </button>
+          ) : (
+            <p className="text-sm text-gray-500 py-2">
+              暂无更多推荐
+            </p>
+          )}
         </div>
       )}
     </div>

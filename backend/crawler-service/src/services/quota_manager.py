@@ -19,8 +19,9 @@ class CrawlerQuotaManager:
     """爬虫配额管理器"""
     
     # 学科配额配置
+    # 每个学科至少10条数据，冷门专业热门专业都是10条起步
     SUBJECT_QUOTAS = {
-        # 热门学科（优先级高，配额多）
+        # 热门学科（优先级高，但最少10条）
         "工学": {"quota": 100, "priority": 10},
         "理学": {"quota": 80, "priority": 9},
         "经济学": {"quota": 80, "priority": 9},
@@ -32,13 +33,16 @@ class CrawlerQuotaManager:
         "文学": {"quota": 50, "priority": 6},
         "教育学": {"quota": 50, "priority": 6},
         
-        # 较少学科
+        # 较少学科（但至少10条）
         "哲学": {"quota": 30, "priority": 4},
         "历史学": {"quota": 30, "priority": 4},
         "艺术学": {"quota": 40, "priority": 5},
         "农学": {"quota": 30, "priority": 4},
         "军事学": {"quota": 20, "priority": 3},
     }
+    
+    # 每个学科最少保证的数据量
+    MIN_DATA_PER_SUBJECT = 10
     
     def __init__(self):
         self.quotas: Dict[str, SubjectQuota] = {}
@@ -81,13 +85,16 @@ class CrawlerQuotaManager:
         }
     
     def get_hot_categories(self, limit: int = 10) -> List[Dict]:
-        """获取热门学科列表（前N个，按优先级排序）
+        """获取学科列表（按优先级排序）
+        
+        规则：所有配置的学科都必须返回，即使某些学科暂时没有数据
+        每个学科至少保证10条数据展示
         
         Args:
             limit: 返回数量限制，默认10个
         
         Returns:
-            学科列表，每个包含name、priority、quota
+            学科列表，每个包含name、priority、quota、current
         """
         # 按优先级降序排序
         sorted_subjects = sorted(
@@ -96,7 +103,7 @@ class CrawlerQuotaManager:
             reverse=True
         )
         
-        # 取前N个
+        # 取前N个（如果配置了超过limit个学科）
         result = []
         for i, (category, quota) in enumerate(sorted_subjects[:limit]):
             result.append({
@@ -104,7 +111,33 @@ class CrawlerQuotaManager:
                 "name": category,
                 "priority": quota.priority,
                 "quota": quota.max_quota,
-                "current": quota.current_count
+                "current": quota.current_count,
+                "has_enough_data": quota.current_count >= self.MIN_DATA_PER_SUBJECT
+            })
+        
+        return result
+    
+    def get_all_subjects(self) -> List[Dict]:
+        """获取所有配置的学科（不限制数量）
+        
+        Returns:
+            所有学科列表，包括没有数据的学科
+        """
+        sorted_subjects = sorted(
+            self.quotas.items(),
+            key=lambda x: x[1].priority,
+            reverse=True
+        )
+        
+        result = []
+        for i, (category, quota) in enumerate(sorted_subjects):
+            result.append({
+                "id": i + 1,
+                "name": category,
+                "priority": quota.priority,
+                "quota": quota.max_quota,
+                "current": quota.current_count,
+                "has_enough_data": quota.current_count >= self.MIN_DATA_PER_SUBJECT
             })
         
         return result
