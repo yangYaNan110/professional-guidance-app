@@ -100,6 +100,38 @@
         "grep": true,
         "skill": true
       }
+    },
+    "document-processor": {
+      "description": "文档处理Agent，负责爬取、分析、总结文档内容，生成专业介绍",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/document-processor.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "video-processor": {
+      "description": "视频处理Agent，负责搜索、总结、剪辑视频，生成视频摘要",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/video-processor.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
     }
   },
   "skill": {

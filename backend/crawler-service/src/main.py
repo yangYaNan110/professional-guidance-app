@@ -748,61 +748,254 @@ class UniversityDataService:
         major: str = None,
         limit: int = 10
     ) -> dict:
-        """获取推荐大学列表（根据用户目标）"""
+        """获取推荐大学列表（根据用户目标，同时考虑分数和专业匹配）"""
+        
+        # 专业与大学王牌专业的映射
+        major_to_strengths = {
+            '计算机科学与技术': ['计算机科学与技术', '软件工程', '人工智能', '电子信息工程', '数据科学与大数据技术'],
+            '人工智能': ['人工智能', '计算机科学与技术', '自动化', '电子信息工程'],
+            '软件工程': ['软件工程', '计算机科学与技术', '电子信息工程'],
+            '电子信息工程': ['电子信息工程', '通信工程', '自动化', '电气工程'],
+            '自动化': ['自动化', '电气工程', '计算机科学与技术', '机械工程'],
+            '机械工程': ['机械工程', '材料科学与工程', '车辆工程', '航空航天工程'],
+            '航空航天工程': ['航空航天工程', '机械工程', '材料科学与工程', '仪器科学与技术'],
+            '数学': ['数学', '统计学', '计算机科学与技术', '物理学'],
+            '物理学': ['物理学', '电子信息工程', '材料科学与工程', '计算机科学与技术'],
+            '化学': ['化学', '材料科学与工程', '药学', '化学工程与技术'],
+            '数据科学与大数据技术': ['数据科学与大数据技术', '计算机科学与技术', '统计学'],
+            '统计学': ['统计学', '数学', '数据科学与大数据技术', '金融学'],
+            '临床医学': ['临床医学', '基础医学', '口腔医学', '公共卫生与预防医学'],
+            '口腔医学': ['口腔医学', '临床医学', '基础医学'],
+            '护理学': ['护理学', '临床医学', '基础医学'],
+            '药学': ['药学', '化学', '临床医学', '生物医学工程'],
+            '法学': ['法学', '知识产权', '社会学', '政治学与行政学'],
+            '社会学': ['社会学', '社会工作', '法学', '政治学与行政学'],
+            '社会工作': ['社会工作', '社会学', '法学'],
+            '金融学': ['金融学', '经济学', '统计学', '工商管理', '会计学'],
+            '经济学': ['经济学', '金融学', '统计学', '国际经济与贸易'],
+            '会计学': ['会计学', '工商管理', '金融学', '财务管理'],
+            '工商管理': ['工商管理', '会计学', '财务管理', '人力资源管理'],
+            '市场营销': ['工商管理', '市场营销', '电子商务', '经济学'],
+            '财务管理': ['财务管理', '会计学', '工商管理', '金融学'],
+            '英语': ['英语', '翻译', '日语', '法语'],
+            '汉语言文学': ['汉语言文学', '新闻学', '广告学', '编辑出版学'],
+            '新闻学': ['新闻学', '广告学', '传播学', '编辑出版学'],
+            '教育学': ['教育学', '学前教育', '小学教育', '体育教育'],
+            '学前教育': ['学前教育', '教育学', '小学教育'],
+            '体育教育': ['体育教育', '运动训练', '社会体育', '教育学'],
+            '设计学': ['设计学', '美术学', '艺术设计', '视觉传达'],
+            '音乐学': ['音乐学', '作曲与作曲技术理论', '舞蹈学', '戏剧与影视学'],
+            '心理学': ['心理学', '应用心理学', '教育学', '社会学'],
+            '建筑学': ['建筑学', '城乡规划', '土木工程', '风景园林'],
+            '土木工程': ['土木工程', '建筑学', '工程管理', '水利工程'],
+        }
+        
+        related_strengths = major_to_strengths.get(major, [])
+        
+        def get_major_match_score(university: dict) -> float:
+            """计算大学与专业的匹配度（0-100分）"""
+            if not major or not related_strengths:
+                return 0
+            
+            university_strengths = university.get('major_strengths', [])
+            matched = set(university_strengths) & set(related_strengths)
+            match_count = len(matched)
+            
+            if match_count >= 2:
+                return 100
+            elif match_count == 1:
+                return 60
+            else:
+                category_mapping = {
+                    '工学': ['机械工程', '材料科学与工程', '电气工程', '计算机科学与技术'],
+                    '理学': ['数学', '物理学', '化学', '统计学'],
+                    '医学': ['临床医学', '口腔医学', '护理学', '药学'],
+                    '法学': ['法学', '社会学', '政治学', '哲学', '社会工作'],
+                    '经济学': ['金融学', '经济学', '工商管理', '会计学'],
+                    '文学': ['英语', '汉语言文学', '新闻学'],
+                    '教育学': ['教育学', '学前教育', '体育教育'],
+                }
+                
+                for category, strengths in category_mapping.items():
+                    if any(s in related_strengths for s in strengths):
+                        if any(s in university_strengths for s in strengths):
+                            return 30
+                
+                return 0
         
         result = []
         shown_ids = set()
         
-        # 1. 分数匹配大学（±30分范围）
-        if score and score > 0:
-            score_group = []
+        # 1. 专业匹配+分数匹配（最高优先级）
+        if score and score > 0 and major and related_strengths:
+            group = []
             for u in self.universities:
                 scores = [s for s in u["admission_scores"] if s["province"] == province]
                 if scores:
                     latest = scores[0]
                     score_val = latest["min_score"]
                     if score - 30 <= score_val <= score + 30:
-                        score_group.append({
+                        major_score = get_major_match_score(u)
+                        if major_score > 0:
+                            group.append({
+                                **u,
+                                "match_type": "professional",
+                                "match_reason": f"专业实力强，录取分{int(score_val)}分，与您分数({score}分)匹配",
+                                "latest_score": latest,
+                                "major_match_score": major_score
+                            })
+            
+            group.sort(key=lambda x: (x["major_match_score"], x["latest_score"]["min_score"]), reverse=True)
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
+        
+        # 2. 专业匹配+同省（次优先级）
+        if major and related_strengths and province:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids or u["province"] != province:
+                    continue
+                major_score = get_major_match_score(u)
+                if major_score > 0:
+                    scores = [s for s in u["admission_scores"] if s["province"] == province]
+                    latest = scores[0] if scores else None
+                    group.append({
+                        **u,
+                        "match_type": "province_major",
+                        "match_reason": f"本省高校，{major}专业实力较强",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
+            
+            group.sort(key=lambda x: (x["major_match_score"], x["employment_rate"]), reverse=True)
+            result.extend(group[:3])
+            shown_ids.update([u["id"] for u in group[:3]])
+        
+        # 3. 专业匹配+全国（第三优先级）
+        if major and related_strengths:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+                major_score = get_major_match_score(u)
+                if major_score > 0:
+                    scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
+                    latest = scores[0] if scores else None
+                    group.append({
+                        **u,
+                        "match_type": "national_major",
+                        "match_reason": f"{major}专业实力强，全国知名",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
+            
+            group.sort(key=lambda x: (x["major_match_score"], x["employment_rate"]), reverse=True)
+            result.extend(group[:3])
+            shown_ids.update([u["id"] for u in group[:3]])
+        
+        # 4. 分数匹配（无专业匹配但分数接近）- 仅当未指定专业时使用
+        if score and score > 0 and not major:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+                scores = [s for s in u["admission_scores"] if s["province"] == province]
+                if scores:
+                    latest = scores[0]
+                    score_val = latest["min_score"]
+                    if score - 30 <= score_val <= score + 30:
+                        group.append({
                             **u,
                             "match_type": "score",
-                            "match_reason": f"录取分{int(score_val)}分，与您预估分数({score}分)接近",
-                            "latest_score": latest
+                            "match_reason": f"录取分{int(score_val)}分，与您分数({score}分)接近",
+                            "latest_score": latest,
+                            "major_match_score": 0
                         })
             
-            score_group.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
-            result.extend(score_group[:5])
-            shown_ids.update([u["id"] for u in score_group[:5]])
+            group.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
+            result.extend(group[:3])
+            shown_ids.update([u["id"] for u in group[:3]])
         
-        # 2. 同省优质大学
+        # 5. 同省大学（无专业匹配但在本省）- 仅当未指定专业时使用
+        if province and not major:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids or u["province"] != province:
+                    continue
+                scores = [s for s in u["admission_scores"] if s["province"] == province]
+                latest = scores[0] if scores else None
+                group.append({
+                    **u,
+                    "match_type": "province",
+                    "match_reason": f"位于{u['city']}，本省高校，就业率{u['employment_rate']}%",
+                    "latest_score": latest,
+                    "major_match_score": 0
+                })
+            
+            group.sort(key=lambda x: x["employment_rate"], reverse=True)
+            result.extend(group[:3])
+            shown_ids.update([u["id"] for u in group[:3]])
+        
+        # 6. 全国推荐（排除已显示的）- 仅当未指定专业时使用
+        if not major:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+                scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
+                latest = scores[0] if scores else None
+                group.append({
+                    **u,
+                    "match_type": "national",
+                    "match_reason": f"{u['level']}高校，就业率{u['employment_rate']}%",
+                    "latest_score": latest,
+                    "major_match_score": 0
+                })
+            
+            group.sort(key=lambda x: x["employment_rate"], reverse=True)
+            result.extend(group[:5])
+        
+        return {
+            "universities": result,
+            "user_target": {
+                "province": province,
+                "score": score,
+                "major": major
+            }
+        }
+        
+        # 4. 同省优质大学
         if province:
             province_group = []
             for u in self.universities:
-                if u["province"] == province and u["id"] not in shown_ids:
-                    scores = [s for s in u["admission_scores"] if s["province"] == province]
-                    latest = scores[0] if scores else None
-                    province_group.append({
-                        **u,
-                        "match_type": "province",
-                        "match_reason": f"位于{u['city']}，本省高校，就业率{u['employment_rate']}%",
-                        "latest_score": latest
-                    })
-            
-            province_group.sort(key=lambda x: x["employment_rate"], reverse=True)
-            result.extend(province_group[:5])
-            shown_ids.update([u["id"] for u in province_group[:5]])
-        
-        # 3. 全国推荐大学（按就业率排序，排除已显示的）
-        national_group = []
-        for u in self.universities:
-            if u["id"] not in shown_ids:
-                scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
+                if u["id"] in shown_ids:
+                    continue
+                scores = [s for s in u["admission_scores"] if s["province"] == province]
                 latest = scores[0] if scores else None
-                national_group.append({
+                province_group.append({
                     **u,
-                    "match_type": "national",
-                    "match_reason": f"{u['level']}高校，就业率{u['employment_rate']}%，全国排名第{u['id']}位",
+                    "match_type": "province",
+                    "match_reason": f"位于{u['city']}，本省高校，就业率{u['employment_rate']}%",
                     "latest_score": latest
                 })
+            
+            province_group.sort(key=lambda x: x["employment_rate"], reverse=True)
+            result.extend(province_group[:3])
+            shown_ids.update([u["id"] for u in province_group[:3]])
+        
+        # 5. 全国推荐大学（排除已显示的）
+        national_group = []
+        for u in self.universities:
+            if u["id"] in shown_ids:
+                continue
+            scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
+            latest = scores[0] if scores else None
+            national_group.append({
+                **u,
+                "match_type": "national",
+                "match_reason": f"{u['level']}高校，就业率{u['employment_rate']}%，全国排名第{u['id']}位",
+                "latest_score": latest
+            })
         
         national_group.sort(key=lambda x: x["employment_rate"], reverse=True)
         result.extend(national_group[:5])
@@ -880,6 +1073,58 @@ async def get_university_detail(university_id: int):
             raise e
         logger.error(f"获取大学详情失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/major/video")
+async def get_major_video(major: str):
+    """获取专业介绍视频（B站）"""
+    try:
+        import httpx
+        import json
+        
+        # B站搜索API
+        search_url = f"https://api.bilibili.com/x/web-interface/search/type"
+        params = {
+            "search_type": "video",
+            "keyword": f"{major}专业介绍",
+            "order": "totalrank",
+            "duration": 2,  # 10分钟以上
+            "limit": 1
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(search_url, params=params)
+            data = response.json()
+            
+            if data.get("code") == 0 and data.get("data", {}).get("result"):
+                video_info = data["data"]["result"][0]
+                return {
+                    "success": True,
+                    "video": {
+                        "title": video_info.get("title", "").replace("<em class=\"search-key\">", "").replace("</em>", ""),
+                        "author": video_info.get("author", ""),
+                        "description": video_info.get("description", ""),
+                        "duration": video_info.get("duration", ""),
+                        "cover": video_info.get("cover", ""),
+                        "bvid": video_info.get("bvid", ""),
+                        "cid": video_info.get("cid", ""),
+                        "play_count": video_info.get("stat", {}).get("view", 0),
+                        "url": f"https://www.bilibili.com/video/{video_info.get('bvid', '')}"
+                    }
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "未找到相关视频",
+                    "video": None
+                }
+                
+    except Exception as e:
+        logger.error(f"获取B站视频失败: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "video": None
+        }
 
 @app.post("/api/v1/crawler/reset-and-seed")
 async def reset_and_seed():

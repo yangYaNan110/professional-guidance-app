@@ -57,10 +57,77 @@ interface RecommendedUniversitiesResponse {
 
 interface UserTarget {
   province: string;
-  score: number;
+  score?: number;
+}
+
+interface MajorIntroduction {
+  origin: string;
+  development: string;
+  currentStatus: string;
+  trends: string;
+  relatedMajors: string[];
 }
 
 const API_BASE = 'http://localhost:8004';
+
+const majorIntroductions: Record<string, MajorIntroduction> = {
+  '计算机科学与技术': {
+    origin: '计算机科学与技术专业源于20世纪中期的计算机科学学科，随着电子计算机的发明而产生。该学科最初服务于军事和科学研究需求，后逐步发展为独立的学术领域。',
+    development: '从最初的机器语言编程到高级语言，从大型机到个人电脑，从局域网到互联网，经历了多次技术革命。学科体系从单一的计算机硬件研究，发展为涵盖软件、硬件、网络、人工智能等多领域的综合性学科。',
+    currentStatus: '当前是全球最热门的技术学科之一。中国在超级计算、5G通信、人工智能等领域达到世界领先水平。几乎所有高校都开设此专业，年招生规模超过30万人。',
+    trends: '人工智能、量子计算、边缘计算、隐私计算等方向是未来发展重点。跨学科融合趋势明显，如计算机+医学、计算机+金融等复合型人才需求旺盛。',
+    relatedMajors: ['人工智能', '软件工程', '数据科学与大数据技术', '网络工程', '信息安全']
+  },
+  '人工智能': {
+    origin: '人工智能（AI）作为一门学科诞生于1956年达特茅斯会议。早期研究受限于计算能力，发展经历多次起伏，直到深度学习技术的突破才迎来爆发式增长。',
+    development: '从早期的专家系统、机器学习，到深度学习、强化学习，AI经历了多次技术范式转变。2012年AlexNet在ImageNet竞赛中取得突破性成绩，标志着深度学习时代的到来。',
+    currentStatus: 'AI技术已广泛应用于各行各业。中国在计算机视觉、自然语言处理等领域处于国际第一梯队。ChatGPT等大语言模型引发新一轮技术革命。',
+    trends: '大模型、多模态AI、具身智能、AI for Science是主要发展方向。AI与各行业的深度融合将创造大量就业机会，同时也带来伦理和安全挑战。',
+    relatedMajors: ['计算机科学与技术', '数据科学与大数据技术', '自动化', '数学']
+  },
+  '金融学': {
+    origin: '金融学源于经济学，是研究货币、信贷、银行、证券等金融活动及其规律的学科。现代金融学形成于20世纪初，随着金融市场的繁荣发展而不断壮大。',
+    development: '从传统的货币银行学，到公司金融、资产定价、行为金融等分支学科的建立，金融学体系日趋完善。数学模型和量化方法在金融领域的应用日益广泛。',
+    currentStatus: '金融行业是现代经济体系的核心。中国金融市场规模位居世界前列，但对高端金融人才需求旺盛。 fintech（金融科技）正在重塑传统金融业。',
+    trends: '绿色金融、普惠金融、金融科技是发展方向。量化投资、智能投顾、区块链在金融领域的应用将持续深化。',
+    relatedMajors: ['经济学', '统计学', '工商管理', '会计学', '数学']
+  },
+  '临床医学': {
+    origin: '临床医学是医学的核心分支，致力于疾病的诊断、治疗和预防。其历史可追溯至古代巫医不分的状态，经过数千年发展逐步成为一门科学。',
+    development: '从经验医学到循证医学，从传统诊疗到精准医疗，临床医学经历了深刻变革。影像学、检验医学、内镜技术等大大提高了诊断准确率。',
+    currentStatus: '临床医学是医疗体系的基础。中国医疗资源总量大但分布不均，基层医疗人才缺口较大。医患关系、医疗改革是社会热点话题。',
+    trends: '精准医学、转化医学、智慧医疗是发展方向。人工智能辅助诊断、基因治疗等新技术将改变传统诊疗模式。',
+    relatedMajors: ['基础医学', '口腔医学', '护理学', '公共卫生与预防医学']
+  },
+  '法学': {
+    origin: '法学是研究法律规范及其适用规律的学科。在中国，法学教育始于清末民初的新式学堂，经过百余年的发展已成为高等教育的重要组成部分。',
+    development: '从移植西方法律制度到建设中国特色社会主义法治体系，中国法学经历了从借鉴到创新的过程。法理学、宪法学、刑法学、民法学等分支学科体系完备。',
+    currentStatus: '全面依法治国战略为法学发展提供了广阔空间。法治政府建设、企业合规管理、国际商事争端解决等领域人才需求旺盛。',
+    trends: '数字法学、环境法学、国际法等新兴领域快速发展。法律与科技融合带来新的研究方向和就业机会。',
+    relatedMajors: ['社会学', '政治学与行政学', '知识产权', '经济学']
+  },
+  '社会学': {
+    origin: '社会学是一门研究社会关系、社会结构和社会变迁的学科。19世纪末由孔德、涂尔干等学者创立，20世纪初传入中国。',
+    development: '从经典社会学到现代社会学，学科理论和方法不断丰富。实证研究方法的引入使社会学更加科学化。中国社会学在社会转型期发挥了重要作用。',
+    currentStatus: '社会治理现代化为社会学提供了广阔舞台。社会调查、政策评估、社区建设等领域需要大量专业人才。',
+    trends: '数字社会学、人口老龄化、城乡发展等议题研究深入。社会工作、社会政策方向人才需求增加。',
+    relatedMajors: ['社会工作', '政治学与行政学', '法学', '心理学']
+  },
+  '数据科学与大数据技术': {
+    origin: '数据科学是21世纪新兴的交叉学科，整合了统计学、计算机科学和领域知识。2012年《哈佛商业评论》称数据科学家为"21世纪最性感职业"。',
+    development: '大数据概念2011年由麦肯锡提出后迅速普及。云计算、分布式计算等技术突破使海量数据处理成为可能。数据科学成为企业数字化转型的核心能力。',
+    currentStatus: '数据驱动决策已成为各行业共识。中国大数据产业规模超万亿，但数据人才缺口仍达百万级。',
+    trends: '数据中台、隐私计算、实时数据处理是技术热点。数据治理、数据安全方向人才需求上升。',
+    relatedMajors: ['计算机科学与技术', '统计学', '人工智能', '数学']
+  },
+  '自动化': {
+    origin: '自动化是利用控制系统代替人工操作的工程技术。工业革命催生了自动化需求，20世纪自动控制理论的确立奠定了学科基础。',
+    development: '从机械自动化到电气自动化，再到智能自动化，技术水平不断提升。PLC、DCS、工业机器人等设备广泛应用。',
+    currentStatus: '智能制造为中国工业转型升级提供支撑。工业互联网、机器人产业快速发展，对自动化人才需求旺盛。',
+    trends: '工业互联网、数字孪生、智能机器人是发展方向。人机协作、柔性制造成为新趋势。',
+    relatedMajors: ['电气工程及其自动化', '测控技术与仪器', '计算机科学与技术', '机械工程']
+  }
+};
 
 const MajorDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -71,6 +138,8 @@ const MajorDetailPage: React.FC = () => {
   const [userTarget, setUserTarget] = useState<UserTarget | null>(null);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [targetForm, setTargetForm] = useState({ province: '', score: '' });
+  const [activeTab, setActiveTab] = useState<'intro' | 'universities'>('intro');
+  const [selectedRelatedMajor, setSelectedRelatedMajor] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTarget = localStorage.getItem('userTarget');
@@ -115,9 +184,14 @@ const MajorDetailPage: React.FC = () => {
 
         // 获取推荐大学
         if (userTarget) {
-          const uniResponse = await fetch(
-            `${API_BASE}/api/v1/universities/recommend?province=${encodeURIComponent(userTarget.province)}&score=${userTarget.score}`
-          );
+          let apiUrl = `${API_BASE}/api/v1/universities/recommend?province=${encodeURIComponent(userTarget.province)}`;
+          if (userTarget.score) {
+            apiUrl += `&score=${userTarget.score}`;
+          }
+          if (major?.name) {
+            apiUrl += `&major=${encodeURIComponent(major.name)}`;
+          }
+          const uniResponse = await fetch(apiUrl);
           if (uniResponse.ok) {
             const uniData: RecommendedUniversitiesResponse = await uniResponse.json();
             setUniversities(uniData.universities || []);
@@ -210,10 +284,10 @@ const MajorDetailPage: React.FC = () => {
   }, [universities]);
 
   const handleSaveTarget = () => {
-    if (targetForm.province && targetForm.score) {
+    if (targetForm.province) {
       const target: UserTarget = {
         province: targetForm.province,
-        score: parseInt(targetForm.score)
+        score: targetForm.score ? parseInt(targetForm.score) : undefined
       };
       setUserTarget(target);
       localStorage.setItem('userTarget', JSON.stringify(target));
@@ -274,56 +348,73 @@ const MajorDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {universities.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">🏫 推荐大学</h2>
-              <button onClick={() => setShowTargetModal(true)} className="px-4 py-1.5 text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">
-                {userTarget ? '✏️ 修改目标' : '🎯 设置目标'}
-              </button>
-            </div>
-            
-            {userTarget && (
-              <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
-                  🎯 您的目标：{userTarget.province}省 · 预估分数 {userTarget.score}分
-                </p>
-              </div>
-            )}
-
-            {universityGroups.map((group) => (
-              <div key={group.type} className="mb-6">
-                <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-primary-500 rounded-full"></span>
-                  {group.name}
-                </h3>
-                <div className="space-y-3">
-                  {group.list.map((uni, uidx) => (
-                    <motion.div key={uni.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: uidx * 0.05 }} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-100 dark:border-gray-600 hover:shadow-md transition-shadow">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="font-semibold text-lg text-gray-900 dark:text-white">{uni.name}</span>
-                        <span className="px-2.5 py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs rounded font-medium">{uni.level}</span>
-                        {uni.latest_score && (
-                          <span className="px-2.5 py-0.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs rounded font-medium">📊 {uni.latest_score.year}年 {uni.latest_score.min_score}分</span>
-                        )}
-                        <span className="px-2.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded">💼 就业率 {uni.employment_rate}%</span>
-                        <span className="px-2.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded">📍 {uni.city}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded px-3 py-2">💡 {uni.match_reason}</p>
-                      {uni.admission_scores.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {uni.admission_scores.slice(0, 3).map((score, sidx) => (
-                            <span key={sidx} className="text-xs text-gray-500 dark:text-gray-500">{score.year}年: {score.min_score}分</span>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            ))}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4 border-b border-gray-100 dark:border-gray-700">
+            <button onClick={() => setActiveTab('intro')} className={`px-4 py-2 font-medium transition-colors ${activeTab === 'intro' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              📚 专业介绍
+            </button>
+            <button onClick={() => setActiveTab('universities')} className={`px-4 py-2 font-medium transition-colors ${activeTab === 'universities' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              🏫 推荐大学
+            </button>
           </div>
-        )}
+
+          {activeTab === 'intro' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              {(() => {
+                const intro = majorIntroductions[major.major_name];
+                if (!intro) return <p className="text-gray-500">暂无专业介绍</p>;
+
+                const relatedMajors = intro.relatedMajors || [];
+                const displayMajor = selectedRelatedMajor || major.major_name;
+                const displayIntro = majorIntroductions[displayMajor] || intro;
+
+                return (
+                  <div>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {relatedMajors.map((related) => (
+                        <button
+                          key={related}
+                          onClick={() => setSelectedRelatedMajor(related)}
+                          className={`px-3 py-1.5 text-sm rounded-full transition-colors ${displayMajor === related ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-100 dark:hover:bg-primary-900/30'}`}
+                        >
+                          {related}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-4">
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">🔍 溯源</h4>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.origin}</p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">📈 发展</h4>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.development}</p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">📊 现状</h4>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.currentStatus}</p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">🚀 趋势</h4>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{displayIntro.trends}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg border border-orange-100 dark:border-orange-800">
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-2">🎬 视频介绍</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">观看视频，深入了解{displayMajor}专业</p>
+                      <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <span className="text-gray-500 text-sm">🎥 视频功能开发中...</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          )}
+
+        </div>
 
         {major.notes && major.notes.length > 0 && (
           <div className="mb-8">
@@ -386,7 +477,7 @@ const MajorDetailPage: React.FC = () => {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowTargetModal(false)} className="flex-1 btn-secondary dark:bg-gray-700 dark:text-white">取消</button>
-                <button onClick={handleSaveTarget} disabled={!targetForm.province || !targetForm.score} className="flex-1 btn-primary disabled:opacity-50">确认应用</button>
+                <button onClick={handleSaveTarget} disabled={!targetForm.province} className="flex-1 btn-primary disabled:opacity-50">确认应用</button>
               </div>
             </div>
           </motion.div>
