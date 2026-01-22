@@ -69,6 +69,14 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
 
+  // 阻止滚轮事件冒泡
+  const handleWheel = (e: React.WheelEvent) => {
+    if (isPaused) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -280,11 +288,17 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           {/* 热点列表 - 固定高度，超出滚动 */}
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-hidden p-4"
+            className={`flex-1 p-4 ${isPaused ? 'overflow-hidden' : 'overflow-hidden'}`}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
+            onWheel={(e) => {
+              if (isPaused) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
           >
-            <div className="scroll-content">
+            <div className={`scroll-content ${isPaused ? 'paused' : ''}`}>
               {hotEvents.length > 0 ? (
                 hotEvents.map((event, index) => (
                   <motion.a
@@ -404,7 +418,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
           animation: scrollUp 60s linear infinite;
         }
         
-        .scroll-content:hover {
+        .scroll-content.paused {
           animation-play-state: paused;
         }
         
