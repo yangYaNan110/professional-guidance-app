@@ -1,0 +1,72 @@
+name: Code Quality Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日执行
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run security scan (Snyk)
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+      
+      - name: Run dependency audit
+        run: |
+          cd frontend/web
+          npm audit --audit-level=high
+          
+      - name: Run Python security check (Bandit)
+        run: |
+          pip install bandit
+          bandit -r backend/ -f json -o bandit-report.json
+      
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: bandit-report.json
+
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install k6 for load testing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -q https://dl.k6.io/key signing key.asc
+          gpg --dearmor < signing\ key.asc | sudo tee /etc/apt/trusted.gpg.d/k6.gpg > /dev/null
+          echo "deb https://dl.k6.io/apt keyring.gpg" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+      
+      - name: Run load test
+        run: |
+          k6 run scripts/load-test.js
+      
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: performance-report.json

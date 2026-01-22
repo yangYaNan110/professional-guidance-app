@@ -1,0 +1,125 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "./需求设计.md"
+  ],
+  "agent": {
+    "coordinator": {
+      "description": "协调调度Agent，负责需求分析、任务拆分、调度协调和结果整合",
+      "mode": "primary",
+      "model": "anthropic/claude-sonnet-4-20250514",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/coordinator.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "task": true,
+        "skill": true
+      }
+    },
+    "frontend": {
+      "description": "前端开发Agent，负责Web、iOS、Android、小程序多端开发",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/frontend.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "backend": {
+      "description": "后端开发Agent，负责API网关、用户服务、对话服务等后端开发",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/backend.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "ai-ml": {
+      "description": "AI/ML开发Agent，负责对话引擎、语音处理、推荐算法等AI能力开发",
+      "mode": "subagent",
+      "model": "anthropic/claude-opus-4-20240307",
+      "temperature": 0.3,
+      "prompt": "{file:.opencode/agent/ai-ml.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "data": {
+      "description": "Data开发Agent，负责爬虫服务、数据分析、可视化等数据相关开发",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/data.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "devops": {
+      "description": "DevOps开发Agent，负责基础设施、容器化、CI/CD等运维开发工作",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.1,
+      "prompt": "{file:.opencode/agent/devops.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    }
+  },
+  "skill": {
+    "enabled": true,
+    "directory": ".opencode/skill",
+    "auto_invoke": true
+  },
+  "tools": {
+    "read": true,
+    "write": true,
+    "edit": true,
+    "bash": true,
+    "glob": true,
+    "grep": true,
+    "task": true,
+    "skill": true
+  },
+  "permission": {
+    "edit": "allow",
+    "bash": "allow",
+    "webfetch": "allow"
+  }
+}

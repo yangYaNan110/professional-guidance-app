@@ -1,0 +1,236 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 1. 代码检查
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install lint tools
+        run: |
+          pip install ruff black mypy
+      
+      - name: Run Python lint
+        run: |
+          ruff check backend/
+          black --check backend/
+          mypy backend/
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Run Node.js lint
+        run: |
+          cd frontend/web
+          npm ci
+          npm run lint
+
+  # 2. 后端测试
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_employment
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx
+      
+      - name: Run backend tests
+        run: |
+          cd backend
+          pytest --cov=. --cov-report=xml --cov-report=term-missing
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_employment
+          REDIS_URL: redis://localhost:6379
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # 3. 前端测试
+  test-frontend:
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          cd frontend/web
+          npm ci
+      
+      - name: Run frontend tests
+        run: |
+          cd frontend/web
+          npm run test:coverage
+        env:
+          VITE_API_BASE_URL: http://localhost:8000/api/v1
+
+  # 4. 构建后端镜像
+  build-backend:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push backend images
+        run: |
+          for service in api-gateway user-service chat-service crawler-service recommendation-service analytics-service; do
+            docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${service}:latest ./backend/${service}
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${service}:latest
+          done
+
+  # 5. 构建前端镜像
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Build frontend
+        run: |
+          cd frontend/web
+          npm ci
+          npm run build
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push frontend
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest ./frontend/web
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest
+
+  # 6. 部署到测试环境
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Staging
+        run: |
+          echo "部署到测试环境..."
+          # 这里可以添加实际的部署命令
+          # 例如：kubectl, docker-compose, ansible等
+          
+          # 示例：使用docker-compose部署
+          docker-compose -f docker/docker-compose.app.yml pull
+          docker-compose -f docker/docker-compose.app.yml up -d
+      
+      - name: Health Check
+        run: |
+          sleep 30
+          curl -f http://localhost:8000/health || exit 1
+
+  # 7. 部署到生产环境（需要手动审批）
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    manual-instruction: "确认部署到生产环境？"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Production
+        run: |
+          echo "部署到生产环境..."
+          # 这里添加生产环境部署命令
+          # 注意：生产环境应该有更严格的流程
+          
+      - name: Notify
+        run: |
+          echo "部署完成！"
