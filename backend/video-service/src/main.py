@@ -735,17 +735,17 @@ async def get_video_with_hot_events(major_name: str):
     
     # 获取热门视频（用于热点视频区域）
     hot_videos_data = await get_hot_videos(major_name, limit=5)
-    hot_videos = hot_videos_data.get("hot_videos", []) if hot_videos_data else []
+    hot_videos = hot_videos_data.get("hot_videos", [])
     
-    # 如果没有主视频，使用热门视频
-    best_video = video_response if video_response else None
+    # 如果没有热门视频，使用主视频
+    best_video = video_response.get("video")
     if not best_video and hot_videos:
         best_video = hot_videos[0] if len(hot_videos) > 0 else None
     
     return {
         "major_name": major_name,
         "hot_video": best_video,
-        "hot_events": hot_events_response.get("events", [])[:10] if hot_events_response else [],
+        "hot_events": hot_events_response.get("events", [])[:10],
         "generated_at": datetime.now().isoformat()
     }
 
