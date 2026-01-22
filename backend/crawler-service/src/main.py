@@ -134,6 +134,18 @@ async def get_crawl_status(task_id: str):
     
     return crawl_tasks[task_id]
 
+@app.get("/api/v1/crawler/quota")
+async def get_quota_status():
+    """获取爬虫配额状态"""
+    from services.quota_manager import quota_manager
+    return quota_manager.get_quota_status()
+
+@app.get("/api/v1/crawler/statistics")
+async def get_crawler_statistics():
+    """获取爬虫统计数据"""
+    from services.quota_manager import quota_manager
+    return quota_manager.get_statistics()
+
 @app.get("/api/v1/major/market-data")
 async def get_market_data(
     page: int = 1,

@@ -2,13 +2,14 @@
 import os
 import sys
 import logging
+import sqlite3
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import json
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import sqlite3
+from quota_manager import quota_manager
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +69,17 @@ class MajorDataManager:
         """
         保存爬取的数据，并确保数据库不超过最大记录数
         策略：
-        1. 去重（根据URL+标题）
-        2. 插入新数据
-        3. 如果超过10000条，删除最旧的记录
+        1. 配额检查（每个学科最多100条，总共不超过10000条）
+        2. 去重（根据URL+标题）
+        3. 插入新数据
+        4. 如果超过10000条，删除最旧的记录
         """
         if not new_data:
             return 0
+        
+        # 获取分配计划
+        quota_plan = quota_manager.get_distribution_plan(len(new_data))
+        logger.info(f"配额分配计划: {quota_plan}")
         
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -82,16 +88,28 @@ class MajorDataManager:
         
         try:
             for item in new_data:
+                category = item.get('category', '未知')
+                
+                # 1. 配额检查
+                if not quota_manager.can_crawl(category):
+                    logger.info(f"学科 {category} 已达配额上限，跳过")
+                    continue
+                
+                # 2. 去重检查
+                cursor.execute(
+                    "SELECT id FROM major_market_data WHERE source_url = ?",
+                    (item.get('source_url', ''),)
+                )
+                if cursor.fetchone():
+                    continue
+                
+                # 3. 分配配额
+                if not quota_manager.allocate_quota(category):
+                    logger.info(f"无法为学科 {category} 分配配额，跳过")
+                    continue
+                
+                # 4. 插入数据
                 try:
-                    # 去重检查
-                    cursor.execute(
-                        "SELECT id FROM major_market_data WHERE source_url = ?",
-                        (item.get('source_url', ''),)
-                    )
-                    if cursor.fetchone():
-                        continue
-                    
-                    # 插入数据
                     cursor.execute('''
                         INSERT INTO major_market_data (
                             title, major_name, category, source_url, source_website,
@@ -101,7 +119,7 @@ class MajorDataManager:
                     ''', (
                         item.get('title', ''),
                         item.get('major_name'),
-                        item.get('category'),
+                        category,
                         item.get('source_url'),
                         item.get('source_website'),
                         item.get('employment_rate'),
@@ -126,7 +144,8 @@ class MajorDataManager:
             conn.commit()
             logger.info(f"成功保存 {saved_count} 条数据")
             
-            # 检查并清理旧数据
+            # 检查并清理旧数据（确保总数不超过10000）
+            self.ensure_max_records(cursor)
             self.ensure_max_records(cursor)
             
         except Exception as e:
