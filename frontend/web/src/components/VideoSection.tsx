@@ -49,15 +49,15 @@ const getEventTypeIcon = (type: string): string => {
 
 const getEventTypeColor = (type: string): string => {
   const colors: Record<string, string> = {
-    "技术突破": "from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-800",
-    "行业动态": "from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-800",
-    "政策变化": "from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 border-purple-200 dark:border-purple-800",
-    "重要会议": "from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border-orange-200 dark:border-orange-800",
-    "社会事件": "from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 border-red-200 dark:border-red-800",
-    "视频内容": "from-pink-50 to-rose-50 dark:from-pink-900/30 dark:to-rose-900/30 border-pink-200 dark:border-pink-800",
-    "新闻资讯": "from-cyan-50 to-sky-50 dark:from-cyan-900/30 dark:to-sky-900/30 border-cyan-200 dark:border-cyan-800"
+    "技术突破": "from-blue-50 to-indigo-50 border-blue-200",
+    "行业动态": "from-green-50 to-emerald-50 border-green-200",
+    "政策变化": "from-purple-50 to-violet-50 border-purple-200",
+    "重要会议": "from-orange-50 to-amber-50 border-orange-200",
+    "社会事件": "from-red-50 to-rose-50 border-red-200",
+    "视频内容": "from-pink-50 to-rose-50 border-pink-200",
+    "新闻资讯": "from-cyan-50 to-sky-50 border-cyan-200"
   };
-  return colors[type] || "from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-600";
+  return colors[type] || "from-gray-50 to-gray-100 border-gray-200";
 };
 
 const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
@@ -189,23 +189,23 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                     }}
                   />
                 ) : (
-                  <div className="w-full h-32 bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                  <div className="w-full h-32 bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 flex items-center justify-center">
                     <span className="text-4xl">🎬</span>
                   </div>
                 )}
                 
                 {/* 遮罩 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                 
                 {/* 播放按钮 */}
                 {introVideo.is_video && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-all duration-300">
                     <motion.div 
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                       className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg"
                     >
-                      <svg className="w-6 h-6 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-gray-700 ml-1" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </motion.div>
@@ -214,7 +214,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                 
                 {/* 时长 */}
                 {introVideo.is_video && introVideo.duration && (
-                  <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded font-medium">
+                  <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded font-medium">
                     {formatDuration(introVideo.duration)}
                   </div>
                 )}
@@ -242,7 +242,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                       </svg>
                       {formatViewCount(introVideo.view_count)}
                     </span>
-                    {introVideo.author && <span>{introVideo.author}</span>}
+                    {introVideo.author && <span className="text-gray-400">{introVideo.author}</span>}
                   </div>
                 </div>
                 
@@ -260,7 +260,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="flex-1 flex items-center justify-center text-gray-400">
               <span className="text-3xl mb-2 block">🎬</span>
             </div>
           )}
@@ -309,10 +309,10 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} dark:from-gray-800 dark:to-gray-700 dark:border-gray-600`}
                   >
                     {/* 图标 */}
-                    <div className="flex-shrink-0 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-lg flex items-center justify-center text-xl shadow-sm">
+                    <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm dark:bg-gray-700">
                       {event.is_video ? '🎬' : getEventTypeIcon(event.event_type || '新闻资讯')}
                     </div>
                     
@@ -363,9 +363,9 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
                   href={event.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-start gap-3 p-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3`}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-300 group block mb-3 bg-gradient-to-r ${getEventTypeColor(event.event_type || '新闻资讯')} dark:from-gray-800 dark:to-gray-700 dark:border-gray-600`}
                 >
-                  <div className="flex-shrink-0 w-10 h-10 bg-white/80 dark:bg-gray-800/80 rounded-lg flex items-center justify-center text-xl shadow-sm">
+                  <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm dark:bg-gray-700">
                     {event.is_video ? '🎬' : getEventTypeIcon(event.event_type || '新闻资讯')}
                   </div>
                   
