@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 interface Major {
@@ -12,15 +12,14 @@ interface Major {
   matchScore: number;
 }
 
-// 完整学科列表
-const ALL_CATEGORIES = [
-  '全部学科',
-  '工学', '理学', '经济学', '管理学',
-  '医学', '法学', '文学', '教育学',
-  '艺术学', '哲学', '历史学', '农学', '军事学'
-];
+interface Category {
+  id: number;
+  name: string;
+  priority: number;
+  quota: number;
+  current: number;
+}
 
-// 排序方式
 const SORT_OPTIONS = [
   { value: 'matchScore', label: '综合排序' },
   { value: 'employmentRate', label: '就业率' },
@@ -29,8 +28,10 @@ const SORT_OPTIONS = [
 ];
 
 const MajorsPage: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('全部学科');
   const [selectedSort, setSelectedSort] = useState('matchScore');
+  const [loading, setLoading] = useState(true);
 
   const [majors] = useState<Major[]>([
     {
@@ -135,6 +136,24 @@ const MajorsPage: React.FC = () => {
     }
   ]);
 
+  // 从后端API获取学科列表
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:8004/api/v1/major/categories');
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (error) {
+        console.error('获取学科列表失败:', error);
+        // 如果API不可用，使用备用数据
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   // 过滤和排序后的专业列表
   const filteredAndSortedMajors = useMemo(() => {
     let result = [...majors];
@@ -154,9 +173,9 @@ const MajorsPage: React.FC = () => {
           const salaryB = parseInt(b.avgSalary);
           return salaryB - salaryA;
         case 'heatIndex':
-          return b.matchScore - a.matchScore; // 使用matchScore作为热度
+          return b.matchScore - a.matchScore;
         default:
-          return b.matchScore - a.matchScore; // 默认按匹配度
+          return b.matchScore - a.matchScore;
       }
     });
 
@@ -182,9 +201,11 @@ const MajorsPage: React.FC = () => {
             className="input w-full sm:w-40 text-sm"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
+            disabled={loading}
           >
-            {ALL_CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+            <option value="全部学科">全部学科</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.name}>{cat.name}</option>
             ))}
           </select>
           <select
@@ -211,7 +232,11 @@ const MajorsPage: React.FC = () => {
 
       {/* 专业列表 */}
       <div className="grid gap-4">
-        {filteredAndSortedMajors.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>加载中...</p>
+          </div>
+        ) : filteredAndSortedMajors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>暂无该学科的专业数据</p>
           </div>
@@ -260,7 +285,7 @@ const MajorsPage: React.FC = () => {
         )}
       </div>
 
-      {filteredAndSortedMajors.length > 0 && (
+      {!loading && filteredAndSortedMajors.length > 0 && (
         <div className="mt-6 text-center">
           <button className="btn-secondary text-sm py-2 px-6">
             加载更多专业

@@ -146,6 +146,24 @@ async def get_crawler_statistics():
     from services.quota_manager import quota_manager
     return quota_manager.get_statistics()
 
+@app.get("/api/v1/major/categories")
+async def get_categories(limit: int = 10):
+    """获取学科分类列表（热门前N个）
+    
+    Query Parameters:
+        - limit: int (default: 10) 返回数量限制
+    
+    Response:
+        - categories: 学科列表
+        - total: 总数
+    """
+    from services.quota_manager import quota_manager
+    categories = quota_manager.get_hot_categories(limit)
+    return {
+        "categories": categories,
+        "total": len(categories)
+    }
+
 @app.get("/api/v1/major/market-data")
 async def get_market_data(
     page: int = 1,

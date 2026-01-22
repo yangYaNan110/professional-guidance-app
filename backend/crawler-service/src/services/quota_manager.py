@@ -80,6 +80,35 @@ class CrawlerQuotaManager:
             }
         }
     
+    def get_hot_categories(self, limit: int = 10) -> List[Dict]:
+        """获取热门学科列表（前N个，按优先级排序）
+        
+        Args:
+            limit: 返回数量限制，默认10个
+        
+        Returns:
+            学科列表，每个包含name、priority、quota
+        """
+        # 按优先级降序排序
+        sorted_subjects = sorted(
+            self.quotas.items(),
+            key=lambda x: x[1].priority,
+            reverse=True
+        )
+        
+        # 取前N个
+        result = []
+        for i, (category, quota) in enumerate(sorted_subjects[:limit]):
+            result.append({
+                "id": i + 1,
+                "name": category,
+                "priority": quota.priority,
+                "quota": quota.max_quota,
+                "current": quota.current_count
+            })
+        
+        return result
+    
     def can_crawl(self, category: str) -> bool:
         """检查是否可以爬取该学科"""
         if category not in self.quotas:
