@@ -36,6 +36,7 @@ interface University {
   location: string;
   admission_score?: string;
   match_reason?: string;
+  province: string;
 }
 
 interface UserTarget {
@@ -221,37 +222,103 @@ const MajorDetailPage: React.FC = () => {
 
   const getUniversitiesByCategory = (majorName: string, category: string): UniversityGroup[] => {
     const universities: University[] = [
-      { name: '清华大学', level: '985/211', employment_rate: '99%', location: '北京', admission_score: '680+' },
-      { name: '北京大学', level: '985/211', employment_rate: '98%', location: '北京', admission_score: '675+' },
-      { name: '浙江大学', level: '985/211', employment_rate: '97%', location: '杭州', admission_score: '665+' },
-      { name: '上海交通大学', level: '985/211', employment_rate: '97%', location: '上海', admission_score: '670+' },
-      { name: '复旦大学', level: '985/211', employment_rate: '96%', location: '上海', admission_score: '665+' },
-      { name: '南京大学', level: '985/211', employment_rate: '95%', location: '南京', admission_score: '650+' },
-      { name: '中国科学技术大学', level: '985/211', employment_rate: '98%', location: '合肥', admission_score: '660+' },
-      { name: '华中科技大学', level: '985/211', employment_rate: '94%', location: '武汉', admission_score: '630+' },
-      { name: '武汉大学', level: '985/211', employment_rate: '94%', location: '武汉', admission_score: '630+' },
-      { name: '西安交通大学', level: '985/211', employment_rate: '93%', location: '西安', admission_score: '620+' },
+      { name: '清华大学', level: '985/211', employment_rate: '99%', location: '北京', admission_score: '680+', province: '北京' },
+      { name: '北京大学', level: '985/211', employment_rate: '98%', location: '北京', admission_score: '675+', province: '北京' },
+      { name: '复旦大学', level: '985/211', employment_rate: '96%', location: '上海', admission_score: '665+', province: '上海' },
+      { name: '上海交通大学', level: '985/211', employment_rate: '97%', location: '上海', admission_score: '670+', province: '上海' },
+      { name: '浙江大学', level: '985/211', employment_rate: '97%', location: '杭州', admission_score: '665+', province: '浙江' },
+      { name: '南京大学', level: '985/211', employment_rate: '95%', location: '南京', admission_score: '650+', province: '江苏' },
+      { name: '中国科学技术大学', level: '985/211', employment_rate: '98%', location: '合肥', admission_score: '660+', province: '安徽' },
+      { name: '华中科技大学', level: '985/211', employment_rate: '94%', location: '武汉', admission_score: '630+', province: '湖北' },
+      { name: '武汉大学', level: '985/211', employment_rate: '94%', location: '武汉', admission_score: '630+', province: '湖北' },
+      { name: '西安交通大学', level: '985/211', employment_rate: '93%', location: '西安', admission_score: '620+', province: '陕西' },
+      { name: '哈尔滨工业大学', level: '985/211', employment_rate: '95%', location: '哈尔滨', admission_score: '640+', province: '黑龙江' },
+      { name: '中山大学', level: '985/211', employment_rate: '96%', location: '广州', admission_score: '630+', province: '广东' },
+      { name: '四川大学', level: '985/211', employment_rate: '93%', location: '成都', admission_score: '620+', province: '四川' },
+      { name: '山东大学', level: '985/211', employment_rate: '92%', location: '济南', admission_score: '620+', province: '山东' },
+      { name: '吉林大学', level: '985/211', employment_rate: '91%', location: '长春', admission_score: '610+', province: '吉林' },
+      { name: '厦门大学', level: '985/211', employment_rate: '94%', location: '厦门', admission_score: '620+', province: '福建' },
+      { name: '天津大学', level: '985/211', employment_rate: '92%', location: '天津', admission_score: '630+', province: '天津' },
+      { name: '东南大学', level: '985/211', employment_rate: '93%', location: '南京', admission_score: '640+', province: '江苏' },
+      { name: '同济大学', level: '985/211', employment_rate: '95%', location: '上海', admission_score: '660+', province: '上海' },
+      { name: '北京航空航天大学', level: '985/211', employment_rate: '97%', location: '北京', admission_score: '660+', province: '北京' },
+      // 山西省大学
+      { name: '山西大学', level: '双一流', employment_rate: '88%', location: '太原', admission_score: '560+', province: '山西' },
+      { name: '太原理工大学', level: '211', employment_rate: '87%', location: '太原', admission_score: '550+', province: '山西' },
+      { name: '中北大学', level: '省属重点', employment_rate: '85%', location: '太原', admission_score: '530+', province: '山西' },
+      // 江苏省大学
+      { name: '苏州大学', level: '211', employment_rate: '93%', location: '苏州', admission_score: '600+', province: '江苏' },
+      { name: '南京航空航天大学', level: '211', employment_rate: '94%', location: '南京', admission_score: '610+', province: '江苏' },
+      { name: '南京理工大学', level: '211', employment_rate: '93%', location: '南京', admission_score: '610+', province: '江苏' },
+      { name: '河海大学', level: '211', employment_rate: '92%', location: '南京', admission_score: '600+', province: '江苏' },
+      // 浙江省大学
+      { name: '浙江大学', level: '985/211', employment_rate: '97%', location: '杭州', admission_score: '665+', province: '浙江' },
+      { name: '浙江工业大学', level: '省属重点', employment_rate: '91%', location: '杭州', admission_score: '600+', province: '浙江' },
+      { name: '宁波大学', level: '双一流', employment_rate: '90%', location: '宁波', admission_score: '590+', province: '浙江' },
+      // 广东省大学
+      { name: '华南理工大学', level: '985/211', employment_rate: '96%', location: '广州', admission_score: '630+', province: '广东' },
+      { name: '暨南大学', level: '211', employment_rate: '93%', location: '广州', admission_score: '610+', province: '广东' },
+      { name: '深圳大学', level: '省属重点', employment_rate: '94%', location: '深圳', admission_score: '600+', province: '广东' },
+      // 北京市大学
+      { name: '北京师范大学', level: '985/211', employment_rate: '96%', location: '北京', admission_score: '650+', province: '北京' },
+      { name: '中国人民大学', level: '985/211', employment_rate: '98%', location: '北京', admission_score: '670+', province: '北京' },
+      { name: '北京理工大学', level: '985/211', employment_rate: '96%', location: '北京', admission_score: '655+', province: '北京' },
+      // 上海市大学
+      { name: '华东师范大学', level: '985/211', employment_rate: '95%', location: '上海', admission_score: '645+', province: '上海' },
+      { name: '同济大学', level: '985/211', employment_rate: '95%', location: '上海', admission_score: '660+', province: '上海' },
+      { name: '华东理工大学', level: '211', employment_rate: '93%', location: '上海', admission_score: '620+', province: '上海' },
     ];
 
-    const group1: University[] = userTarget 
-      ? universities.filter(u => u.admission_score && parseInt(u.admission_score) <= userTarget.score + 30 && parseInt(u.admission_score) >= userTarget.score - 30).slice(0, 3)
-      : universities.slice(0, 3);
+    const targetProvince = userTarget?.province || '';
+    const targetScore = userTarget?.score || 0;
     
-    const group2: University[] = userTarget && userTarget.province
-      ? universities.filter(u => u.location === getCityByProvince(userTarget.province)).slice(0, 3)
-      : universities.slice(3, 6);
+    // 分数匹配大学（±30分范围）
+    const group1: University[] = targetScore > 0
+      ? universities
+          .filter(u => {
+            const score = parseInt(u.admission_score?.replace('+', '') || '0');
+            return score > 0 && score <= targetScore + 30 && score >= Math.max(500, targetScore - 30);
+          })
+          .sort((a, b) => {
+            const scoreA = parseInt(a.admission_score?.replace('+', '') || '0');
+            const scoreB = parseInt(b.admission_score?.replace('+', '') || '0');
+            return scoreB - scoreA;
+          })
+          .slice(0, 5)
+      : universities.slice(0, 5);
     
-    const group3: University[] = universities.slice(0, 5);
+    // 同省优质大学
+    const group2: University[] = targetProvince
+      ? universities
+          .filter(u => u.province === targetProvince)
+          .sort((a, b) => {
+            const rateA = parseFloat(a.employment_rate.replace('%', ''));
+            const rateB = parseFloat(b.employment_rate.replace('%', ''));
+            return rateB - rateA;
+          })
+          .slice(0, 5)
+      : [];
+    
+    // 全国推荐大学（按就业率排序前10，排除已显示的）
+    const shownNames = new Set([...group1, ...group2].map(u => u.name));
+    const group3: University[] = universities
+      .filter(u => !shownNames.has(u.name))
+      .sort((a, b) => {
+        const rateA = parseFloat(a.employment_rate.replace('%', ''));
+        const rateB = parseFloat(b.employment_rate.replace('%', ''));
+        return rateB - rateA;
+      })
+      .slice(0, 5);
 
     const groups: UniversityGroup[] = [];
     
     if (group1.length > 0) {
       groups.push({
         type: 'score',
-        name: userTarget ? `🏆 分数匹配大学（${userTarget.score || '--'}分左右）` : '🏆 分数匹配大学',
+        name: targetScore > 0 ? `🏆 分数匹配大学（约${targetScore}分）` : '🏆 分数匹配大学',
         universities: group1.map(u => ({ 
           ...u, 
-          match_reason: `录取分${u.admission_score || '--'}，适合${userTarget?.score || '--'}分左右的考生` 
+          match_reason: `录取分${u.admission_score}，${u.location}高校` 
         }))
       });
     }
@@ -259,16 +326,22 @@ const MajorDetailPage: React.FC = () => {
     if (group2.length > 0) {
       groups.push({
         type: 'province',
-        name: userTarget ? `📍 同省优质大学（${userTarget.province}省）` : '📍 同省优质大学',
-        universities: group2.map(u => ({ ...u, match_reason: `位于${u.location}，本省优质高校` }))
+        name: targetProvince ? `📍 ${targetProvince}省优质大学` : '📍 同省优质大学',
+        universities: group2.map(u => ({ 
+          ...u, 
+          match_reason: `本省高校，就业率${u.employment_rate}，位于${u.location}` 
+        }))
       });
     }
     
     if (group3.length > 0) {
       groups.push({
         type: 'national',
-        name: '🏆 全国推荐大学',
-        universities: group3.slice(0, 5).map(u => ({ ...u, match_reason: '该专业全国顶尖高校，综合实力强' }))
+        name: '🌟 全国推荐大学',
+        universities: group3.map(u => ({ 
+          ...u, 
+          match_reason: `全国${u.level}高校，就业率${u.employment_rate}` 
+        }))
       });
     }
 
