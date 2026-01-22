@@ -33,6 +33,48 @@ interface Major {
   crawled_at: string;
 }
 
+const CuteLoading: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-4">
+    <div className="flex gap-2">
+      <motion.div
+        className="w-4 h-4 bg-primary-500 rounded-full"
+        animate={{ y: [0, -12, 0] }}
+        transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
+      />
+      <motion.div
+        className="w-4 h-4 bg-primary-500 rounded-full"
+        animate={{ y: [0, -12, 0] }}
+        transition={{ repeat: Infinity, duration: 0.6, delay: 0.15 }}
+      />
+      <motion.div
+        className="w-4 h-4 bg-primary-500 rounded-full"
+        animate={{ y: [0, -12, 0] }}
+        transition={{ repeat: Infinity, duration: 0.6, delay: 0.3 }}
+      />
+    </div>
+    <motion.div
+      className="mt-3 text-sm text-gray-500"
+      animate={{ opacity: [0.5, 1, 0.5] }}
+      transition={{ repeat: Infinity, duration: 1.5 }}
+    >
+      正在努力加载中...
+    </motion.div>
+  </div>
+);
+
+const InitialLoading: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-16">
+    <motion.div
+      className="text-4xl mb-4"
+      animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+      transition={{ repeat: Infinity, duration: 2 }}
+    >
+      📚
+    </motion.div>
+    <CuteLoading />
+  </div>
+);
+
 const SORT_OPTIONS = [
   { value: 'heat_index', label: '综合排序（热度优先）' },
   { value: 'employmentRate', label: '就业率' },
@@ -194,9 +236,7 @@ const MajorsPage: React.FC = () => {
 
       <div className="grid gap-4">
         {loading ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>加载中...</p>
-          </div>
+          <InitialLoading />
         ) : majors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p>暂无专业数据</p>
@@ -249,17 +289,26 @@ const MajorsPage: React.FC = () => {
       {!loading && majors.length > 0 && (
         <div className="mt-6 text-center">
           {hasMore ? (
-            <button 
-              onClick={handleLoadMore}
-              disabled={loadingMore}
-              className="btn-secondary text-sm py-2 px-6 disabled:opacity-50"
-            >
-              {loadingMore ? '加载中...' : '加载更多专业'}
-            </button>
+            loadingMore ? (
+              <CuteLoading />
+            ) : (
+              <motion.button
+                onClick={handleLoadMore}
+                className="btn-secondary text-sm py-2 px-6"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                加载更多专业
+              </motion.button>
+            )
           ) : (
-            <p className="text-sm text-gray-500 py-2">
-              暂无更多推荐
-            </p>
+            <motion.div
+              className="text-sm text-gray-500 py-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              🎉 已展示全部推荐
+            </motion.div>
           )}
         </div>
       )}
