@@ -431,19 +431,28 @@ async def get_hot_events(major_name: str):
     获取专业相关的热点事件
     
     从多个平台搜索最近的热点事件：
-    - B站视频
-    - 知乎热榜/文章
-    - 36氪/虎嗅等科技媒体
+    - B站视频（按最新发布时间排序）
+    - 微博热搜
+    - 今日头条
+    - 腾讯新闻
     """
-    # 构建搜索关键词
+    # 构建搜索关键词 - 重点搜索最新消息和行业大佬动态
     keywords = [
-        f"{major_name}最新消息",
-        f"{major_name}热点",
-        f"{major_name}新闻 2024",
-        f"{major_name}新闻 2025",
-        f"{major_name}突破",
-        f"{major_name}重大突破",
-        f"{major_name}行业动态"
+        f"{major_name} 2025",
+        f"{major_name} 最新",
+        f"{major_name} 热点",
+        f"{major_name} 重大突破",
+        f"{major_name} GPT",
+        f"{major_name} DeepSeek",
+        f"{major_name} Agent",
+        f"AI {major_name} 2025",
+        f"{major_name} 黄仁勋",
+        f"{major_name} 马斯克",
+        f"{major_name} Agent Skill",
+        f"{major_name} 估值",
+        f"{major_name} 月之暗面",
+        f"{major_name} OpenAI",
+        f"{major_name} 英伟达"
     ]
     
     headers = {
@@ -453,8 +462,8 @@ async def get_hot_events(major_name: str):
     
     all_events = []
     
-    # 1. 从B站搜索热点视频
-    for keyword in keywords[:3]:
+    # 1. 从B站搜索最新视频（按发布时间排序）
+    for keyword in keywords[:5]:
         try:
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
                 search_url = f"{BILIBILI_API}/x/web-interface/search/type"
@@ -462,8 +471,8 @@ async def get_hot_events(major_name: str):
                     "search_type": "video",
                     "keyword": keyword,
                     "page": 1,
-                    "page_size": 5,
-                    "order": "click"  # 按播放量排序
+                    "page_size": 8,
+                    "order": "pubdate"  # 按最新发布时间排序
                 }
                 
                 response = await client.get(search_url, params=params)
@@ -491,6 +500,12 @@ async def get_hot_events(major_name: str):
                     pubdate = item.get("pubdate", 0)
                     pubdate_str = datetime.fromtimestamp(pubdate).strftime("%Y-%m-%d") if pubdate else ""
                     
+                    # 只保留最近180天的内容
+                    if pubdate:
+                        days_ago = (datetime.now() - datetime.fromtimestamp(pubdate)).days
+                        if days_ago > 180:
+                            continue
+                    
                     # 判断事件类型
                     event_type = detect_event_type(title)
                     
@@ -508,20 +523,20 @@ async def get_hot_events(major_name: str):
                         "author": item.get("author", "")
                     })
         except Exception as e:
-            print(f"搜索B站热点失败 {keyword}: {e}")
+            print(f"搜索B站失败 {keyword}: {e}")
             continue
     
-    # 2. 从知乎搜索热点（模拟知乎热榜数据）
-    zhihu_events = await search_zhihu_hot(major_name, headers)
-    all_events.extend(zhihu_events)
+    # 2. 从微博热搜搜索（模拟）
+    weibo_events = await search_weibo_hot(major_name, headers)
+    all_events.extend(weibo_events)
     
-    # 3. 从36氪搜索科技新闻
-    kr36_events = await search_kr36_hot(major_name, headers)
-    all_events.extend(kr36_events)
+    # 3. 从今日头条搜索
+    toutiao_events = await search_toutiao_hot(major_name, headers)
+    all_events.extend(toutiao_events)
     
-    # 4. 从虎嗅搜索科技资讯
-    huxiu_events = await search_huxiu_hot(major_name, headers)
-    all_events.extend(huxiu_events)
+    # 4. 从腾讯新闻搜索
+    qq_news_events = await search_qqnews_hot(major_name, headers)
+    all_events.extend(qq_news_events)
     
     # 去重并排序
     seen_titles = set()
@@ -532,85 +547,29 @@ async def get_hot_events(major_name: str):
             seen_titles.add(title)
             unique_events.append(event)
     
-    # 按热度排序
-    unique_events.sort(key=lambda x: x.get("heat_index", 0), reverse=True)
+    # 按时间排序（最新的在前），同时考虑热度
+    unique_events.sort(key=lambda x: (x.get("pub_date", ""), x.get("heat_index", 0)), reverse=True)
     
     return {
         "major_name": major_name,
         "total_events": len(unique_events),
-        "events": unique_events[:10],
+        "events": unique_events[:15],
         "generated_at": datetime.now().isoformat()
     }
 
 
-async def search_zhihu_hot(major_name: str, headers: Dict) -> List[Dict]:
-    """从知乎搜索热点（使用搜索API模拟）"""
-    events = []
-    
-    keywords = [f"{major_name}最新", f"{major_name}热点", f"{major_name}2025"]
-    
-    for keyword in keywords[:2]:
-        try:
-            async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
-                # 知乎搜索API
-                url = "https://www.zhihu.com/api/v4/search"
-                params = {
-                    "q": keyword,
-                    "type": "article",
-                    "limit": 5
-                }
-                
-                response = await client.get(url, params=params)
-                if response.status_code != 200:
-                    continue
-                
-                try:
-                    data = response.json()
-                except:
-                    continue
-                
-                for item in data.get("data", [])[:3]:
-                    if not isinstance(item, dict):
-                        continue
-                    
-                    question = item.get("question", {})
-                    title = question.get("title", "")
-                    if not title:
-                        continue
-                    
-                    # 判断事件类型
-                    event_type = detect_event_type(title)
-                    
-                    events.append({
-                        "title": title,
-                        "description": question.get("excerpt", "")[:200],
-                        "source": "知乎",
-                        "url": f"https://www.zhihu.com/question/{question.get('id', '')}",
-                        "pub_date": datetime.now().strftime("%Y-%m-%d"),
-                        "view_count": question.get("visit_count", 0),
-                        "heat_index": min(question.get("visit_count", 0) / 100, 100),
-                        "is_video": False,
-                        "event_type": event_type
-                    })
-        except Exception as e:
-            print(f"搜索知乎热点失败: {e}")
-            continue
-    
-    return events
-
-
-async def search_kr36_hot(major_name: str, headers: Dict) -> List[Dict]:
-    """从36氪搜索科技新闻"""
+async def search_weibo_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从微博热搜搜索"""
     events = []
     
     try:
         async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
-            # 36氪搜索API
-            url = "https://36kr.com/api/search/mix"
+            url = "https://weibo.com/ajax/statuses/mymblog"
             params = {
-                "keyword": f"{major_name} 2025",
-                "page": 1,
-                "per_page": 5
+                "uid": "",
+                "feature": 0,
+                "is_all": 1,
+                "key_word": f"{major_name} 2025"
             }
             
             response = await client.get(url, params=params)
@@ -622,8 +581,56 @@ async def search_kr36_hot(major_name: str, headers: Dict) -> List[Dict]:
             except:
                 return events
             
-            items = data.get("data", {}).get("items", [])
-            for item in items[:3]:
+            for item in data.get("list", [])[:5]:
+                title = item.get("text_raw", "")
+                if not title:
+                    continue
+                
+                event_type = detect_event_type(title)
+                
+                events.append({
+                    "title": title[:80],
+                    "description": "",
+                    "source": "微博",
+                    "url": f"https://weibo.com/status/{item.get('idstr', '')}",
+                    "pub_date": datetime.now().strftime("%Y-%m-%d"),
+                    "view_count": item.get("attitudes_count", 0),
+                    "heat_index": min(item.get("attitudes_count", 0) / 100, 100),
+                    "is_video": False,
+                    "event_type": event_type
+                })
+    except Exception as e:
+        print(f"搜索微博失败: {e}")
+    
+    return events
+
+
+async def search_toutiao_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从今日头条搜索"""
+    events = []
+    
+    try:
+        async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+            url = "https://www.toutiao.com/api/search/content/"
+            params = {
+                "aid": 24,
+                "app_name": "web_search",
+                "keyword": f"{major_name} 2025",
+                "offset": 0,
+                "format": "json",
+                "autosuggest": 1
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return events
+            
+            try:
+                data = response.json()
+            except:
+                return events
+            
+            for item in data.get("data", [])[:5]:
                 title = item.get("title", "")
                 if not title:
                     continue
@@ -632,33 +639,33 @@ async def search_kr36_hot(major_name: str, headers: Dict) -> List[Dict]:
                 
                 events.append({
                     "title": title,
-                    "description": item.get("description", "")[:200] if item.get("description") else "",
-                    "source": "36氪",
-                    "url": item.get("url", ""),
+                    "description": item.get("abstract", "")[:200] if item.get("abstract") else "",
+                    "source": "今日头条",
+                    "url": item.get("article_url", ""),
                     "pub_date": item.get("publish_time", "")[:10] if item.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
-                    "view_count": item.get("view_count", 0),
-                    "heat_index": min(item.get("view_count", 0) / 100, 100),
+                    "view_count": item.get("go_detail_count", 0),
+                    "heat_index": min(item.get("go_detail_count", 0) / 1000, 100),
                     "is_video": False,
                     "event_type": event_type
                 })
     except Exception as e:
-        print(f"搜索36氪失败: {e}")
+        print(f"搜索今日头条失败: {e}")
     
     return events
 
 
-async def search_huxiu_hot(major_name: str, headers: Dict) -> List[Dict]:
-    """从虎嗅搜索科技资讯"""
+async def search_qqnews_hot(major_name: str, headers: Dict) -> List[Dict]:
+    """从腾讯新闻搜索"""
     events = []
     
     try:
         async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
-            # 虎嗅搜索API
-            url = "https://www.huxiu.com/api.php"
+            url = "https://i.news.qq.com/toutiao/search"
             params = {
-                "action": "search",
-                "keywords": f"{major_name} 2025",
-                "page": 1
+                "keyword": f"{major_name} 2025",
+                "page": 1,
+                "pageSize": 5,
+                "sort": "time"
             }
             
             response = await client.get(url, params=params)
@@ -670,9 +677,8 @@ async def search_huxiu_hot(major_name: str, headers: Dict) -> List[Dict]:
             except:
                 return events
             
-            articles = data.get("data", {}).get("articles", [])
-            for article in articles[:3]:
-                title = article.get("title", "")
+            for item in data.get("result", {}).get("data", [])[:5]:
+                title = item.get("title", "")
                 if not title:
                     continue
                 
@@ -680,17 +686,17 @@ async def search_huxiu_hot(major_name: str, headers: Dict) -> List[Dict]:
                 
                 events.append({
                     "title": title,
-                    "description": article.get("summary", "")[:200] if article.get("summary") else "",
-                    "source": "虎嗅",
-                    "url": article.get("url", ""),
-                    "pub_date": article.get("publish_time", "")[:10] if article.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
-                    "view_count": article.get("views", 0),
-                    "heat_index": min(article.get("views", 0) / 100, 100),
+                    "description": item.get("abstract", "")[:200] if item.get("abstract") else "",
+                    "source": "腾讯新闻",
+                    "url": item.get("url", ""),
+                    "pub_date": item.get("publish_time", "")[:10] if item.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
+                    "view_count": item.get("comment_count", 0) * 100,
+                    "heat_index": min(item.get("comment_count", 0) * 10, 100),
                     "is_video": False,
                     "event_type": event_type
                 })
     except Exception as e:
-        print(f"搜索虎嗅失败: {e}")
+        print(f"搜索腾讯新闻失败: {e}")
     
     return events
 

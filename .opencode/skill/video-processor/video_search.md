@@ -39,37 +39,178 @@ async def get_hot_events(major_name: str) -> List[Dict]:
     """从多个平台获取专业相关的热点事件"""
     all_events = []
     
-    # 1. 从B站搜索热点视频
+    # 1. 从B站搜索热点视频（按最新发布时间排序）
     bilibili_events = await search_bilibili_hot(major_name)
     all_events.extend(bilibili_events)
     
-    # 2. 从知乎搜索热点问答/文章
-    zhihu_events = await search_zhihu_hot(major_name)
-    all_events.extend(zhihu_events)
+    # 2. 从微博热搜搜索
+    weibo_events = await search_weibo_hot(major_name)
+    all_events.extend(weibo_events)
     
-    # 3. 从36氪搜索科技新闻
-    kr36_events = await search_kr36_hot(major_name)
-    all_events.extend(kr36_events)
+    # 3. 从今日头条搜索
+    toutiao_events = await search_toutiao_hot(major_name)
+    all_events.extend(toutiao_events)
     
-    # 4. 从虎嗅搜索科技资讯
-    huxiu_events = await search_huxiu_hot(major_name)
-    all_events.extend(huxiu_events)
+    # 4. 从腾讯新闻搜索
+    qq_news_events = await search_qqnews_hot(major_name)
+    all_events.extend(qq_news_events)
     
-    # 去重并按热度排序
+    # 去重并按时间+热度排序（最新在前）
     unique_events = deduplicate_by_title(all_events)
-    unique_events.sort(key=lambda x: x.get("heat_index", 0), reverse=True)
+    unique_events.sort(key=lambda x: (x.get("pub_date", ""), x.get("heat_index", 0)), reverse=True)
     
-    return unique_events[:10]
+    # 只保留最近180天的内容
+    unique_events = filter_events_by_days(unique_events, days=180)
+    
+    return unique_events[:15]
+```
+
+### 行业大佬动态规则
+
+**核心原则：查找热点时，多关注领域大佬的动态和新闻**
+
+#### 行业大佬关键词库
+
+| 专业领域 | 行业大佬/公司 | 关键词 |
+|---------|-------------|--------|
+| **人工智能** | 黄仁勋（Jensen Huang）、马斯克（Elon Musk） | "人工智能 黄仁勋"、"人工智能 马斯克"、"AI Agent" |
+| | OpenAI、英伟达（NVIDIA） | "人工智能 OpenAI"、"人工智能 英伟达"、"AI GPT" |
+| | 月之暗面（MoonShot AI） | "人工智能 估值"、"AI Agent Skill" |
+| **计算机科学** | 比尔·盖茨、扎克伯格 | "计算机 微软"、"Meta 最新" |
+| **软件工程** | 马斯克、扎克伯格 | "软件 工程 特斯拉"、"代码 开源" |
+| **自动驾驶/新能源** | 马斯克、李想、何小鹏 | "自动驾驶 特斯拉"、"新能源 车" |
+| **生物医药** | 各大药企CEO | "医药 突破"、"创新药 研发" |
+
+#### 行业动态关键词
+
+| 关键词类型 | 示例 | 说明 |
+|-----------|------|------|
+| **技术突破** | "GPT-5发布"、"Agent能力提升" | 技术领域的重大进展 |
+| **融资估值** | "估值创新高"、"融资10亿" | 公司发展动态 |
+| **产品发布** | "新模型发布"、"新一代芯片" | 产品发布新闻 |
+| **行业会议** | "世界AI大会"、"发布会" | 重要会议和活动 |
+| **政策变化** | "新政策发布"、"行业规划" | 政策相关动态 |
+
+#### 热点事件数据结构
+
+**核心原则：热点内容不一定是视频，也可以是跳转到外部网页链接**
+
+| 内容类型 | 说明 | 优先级 |
+|---------|------|-------|
+| 视频内容 | B站、YouTube等平台的视频 | 优先（带封面、时长、播放量） |
+| 新闻资讯 | 知乎、36氪、虎嗅等平台的文章 | 优先（带阅读量、来源） |
+| 社交动态 | 微博、小红书的热门讨论 | 次优（带讨论热度） |
+
+```json
+{
+  "hot_video": {
+    "title": "黄仁勋最新演讲：AI正在重塑整个行业",
+    "description": "...",
+    "cover": "https://...",
+    "duration": 600,
+    "author": "科技博主",
+    "view_count": 100000,
+    "pub_date": "2025-01-20",
+    "url": "https://www.bilibili.com/video/BVxxx",
+    "source": "B站",
+    "is_video": true,
+    "event_type": "重要会议"
+  },
+  "hot_events": [
+    {
+      "title": "月之暗面估值突破30亿美元，AI独角兽再添新成员",
+      "description": "...",
+      "view_count": 50000,
+      "pub_date": "2025-01-19",
+      "url": "https://36kr.com/p/xxx",
+      "source": "36氪",
+      "is_video": false,
+      "event_type": "行业动态"
+    },
+    {
+      "title": "马斯克发布新版FSD，宣称自动驾驶安全性提升10倍",
+      "description": "...",
+      "view_count": 80000,
+      "pub_date": "2025-01-18",
+      "url": "https://weibo.com/status/xxx",
+      "source": "微博",
+      "is_video": false,
+      "event_type": "技术突破"
+    }
+  ]
+}
+```
+
+#### 搜索关键词构建规则
+
+```python
+def build_hot_event_keywords(major_name: str) -> List[str]:
+    """构建热点事件搜索关键词（包含行业大佬和关键术语）"""
+    base_keywords = [
+        f"{major_name} 2025",
+        f"{major_name} 最新",
+        f"{major_name} 热点",
+        f"{major_name} 重大突破",
+        f"{major_name} GPT",
+        f"{major_name} DeepSeek",
+        f"{major_name} Agent",
+        f"AI {major_name} 2025"
+    ]
+    
+    # 行业大佬关键词
+    leader_keywords = [
+        f"{major_name} 黄仁勋",
+        f"{major_name} 马斯克",
+        f"{major_name} Agent Skill",
+        f"{major_name} 估值",
+        f"{major_name} OpenAI",
+        f"{major_name} 英伟达"
+    ]
+    
+    return base_keywords + leader_keywords
+```
+
+#### 180天时间过滤规则
+
+| 规则 | 说明 |
+|-----|------|
+| 时间范围 | 只保留最近180天的内容 |
+| 排序方式 | 按时间倒序 + 热度加权 |
+| 去重规则 | 标题相似度>80%视为重复 |
+| 最低数量 | 返回最多15个热点事件 |
+
+```python
+def filter_events_by_days(events: List[Dict], days: int = 180) -> List[Dict]:
+    """过滤指定天数内的事件"""
+    now = datetime.now()
+    cutoff = timedelta(days=days)
+    filtered = []
+    
+    for event in events:
+        pub_date = event.get("pub_date", "")
+        if pub_date:
+            try:
+                event_date = datetime.strptime(pub_date, "%Y-%m-%d")
+                if (now - event_date) <= cutoff:
+                    filtered.append(event)
+            except:
+                # 如果日期解析失败，保留该事件
+                filtered.append(event)
+        else:
+            # 没有日期信息的事件也保留
+            filtered.append(event)
+    
+    return filtered
 ```
 
 ### 多数据源结构
 
-| 数据源 | 内容类型 | 返回字段 |
-|-------|---------|---------|
-| B站 | 视频 | title, cover, duration, author, play, url, is_video=True |
-| 知乎 | 问答/文章 | title, description, url, is_video=False |
-| 36氪 | 新闻 | title, description, url, is_video=False |
-| 虎嗅 | 资讯 | title, description, url, is_video=False |
+| 数据源 | 内容类型 | 返回字段 | 优先级 |
+|-------|---------|---------|--------|
+| B站 | 视频 | title, cover, duration, author, play, url, is_video=True | 1 |
+| 微博 | 热搜 | title, url, views, pub_date, is_video=False | 2 |
+| 今日头条 | 新闻 | title, description, url, views, pub_date, is_video=False | 3 |
+| 腾讯新闻 | 新闻 | title, description, url, views, pub_date, is_video=False | 4 |
 
 ### 热点事件数据结构
 
