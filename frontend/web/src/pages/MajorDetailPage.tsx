@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Helmet } from 'react-helmet-async';
 
 interface MajorDetail {
   id: number;
@@ -330,10 +329,6 @@ const MajorDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Helmet>
-        <title>{major.major_name} - 专业详情</title>
-      </Helmet>
-
       <motion.button
         onClick={() => navigate('/majors')}
         className="mb-4 text-primary-600 hover:text-primary-800 flex items-center gap-2"
