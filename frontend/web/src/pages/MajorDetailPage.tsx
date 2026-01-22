@@ -441,40 +441,6 @@ const MajorDetailPage: React.FC = () => {
           </div>
         )}
 
-            {major.universities.map((group, idx) => (
-              <div key={group.type} className="mb-6">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">{group.name}</h3>
-                <div className="space-y-3">
-                  {group.universities.map((uni, uidx) => (
-                    <motion.div
-                      key={uni.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.1 + uidx * 0.05 }}
-                      className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-semibold text-gray-900 dark:text-white">{uni.name}</span>
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                          {uni.level}
-                        </span>
-                        {uni.admission_score && (
-                          <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">
-                            录取分 {uni.admission_score}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-500 dark:text-gray-400">就业率 {uni.employment_rate}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{uni.location}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{uni.match_reason}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {major.notes && major.notes.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
