@@ -70,19 +70,24 @@ const MajorDetailPage: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE}/api/v1/major/market-data?id=${id}`);
+        const response = await fetch(`${API_BASE}/api/v1/major/market-data?page_size=100`);
         if (!response.ok) throw new Error('获取专业详情失败');
         const data = await response.json();
         
-        if (data.data && data.data.length > 0) {
-          setMajor(generateMockDetail(data.data[0]));
+        // 按id过滤找到对应的专业
+        const targetId = parseInt(id);
+        const targetItem = (data.data || []).find((item: any) => item.id === targetId);
+        
+        if (targetItem) {
+          setMajor(generateMockDetail(targetItem));
+        } else {
+          // 如果没找到，使用模拟数据
+          setMajor(generateMockDetailFromId(targetId));
         }
       } catch (err) {
         console.error('获取专业详情失败:', err);
         // 使用模拟数据
-        if (id) {
-          setMajor(generateMockDetailFromId(parseInt(id)));
-        }
+        setMajor(generateMockDetailFromId(parseInt(id)));
       } finally {
         setLoading(false);
       }
