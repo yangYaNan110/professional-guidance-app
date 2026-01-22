@@ -20,6 +20,18 @@ interface Category {
   current: number;
 }
 
+interface MarketData {
+  id: number;
+  title: string;
+  major_name: string;
+  category: string;
+  employment_rate: number | null;
+  avg_salary: string | null;
+  heat_index: number | null;
+  crawled_at: string;
+  courses: string[];
+}
+
 const SORT_OPTIONS = [
   { value: 'matchScore', label: '综合排序' },
   { value: 'employmentRate', label: '就业率' },
@@ -27,143 +39,82 @@ const SORT_OPTIONS = [
   { value: 'heatIndex', label: '热度' }
 ];
 
+const API_BASE = 'http://localhost:8004';
+
 const MajorsPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('全部学科');
   const [selectedSort, setSelectedSort] = useState('matchScore');
   const [loading, setLoading] = useState(true);
-
-  const [majors] = useState<Major[]>([
-    {
-      id: '1',
-      name: '计算机科学与技术',
-      category: '工学',
-      duration: '4年',
-      courses: ['数据结构', '算法', '操作系统', '计算机网络'],
-      employmentRate: '95%',
-      avgSalary: '18K-25K/月',
-      matchScore: 95
-    },
-    {
-      id: '2',
-      name: '人工智能',
-      category: '工学',
-      duration: '4年',
-      courses: ['机器学习', '深度学习', 'NLP', '计算机视觉'],
-      employmentRate: '98%',
-      avgSalary: '25K-35K/月',
-      matchScore: 88
-    },
-    {
-      id: '3',
-      name: '数据科学与大数据技术',
-      category: '理学',
-      duration: '4年',
-      courses: ['数据分析', '大数据处理', '数据可视化', '统计学'],
-      employmentRate: '92%',
-      avgSalary: '20K-30K/月',
-      matchScore: 82
-    },
-    {
-      id: '4',
-      name: '软件工程',
-      category: '工学',
-      duration: '4年',
-      courses: ['软件测试', '项目管理', '软件架构', '敏捷开发'],
-      employmentRate: '94%',
-      avgSalary: '18K-28K/月',
-      matchScore: 79
-    },
-    {
-      id: '5',
-      name: '金融学',
-      category: '经济学',
-      duration: '4年',
-      courses: ['货币银行学', '投资学', '公司金融', '风险管理'],
-      employmentRate: '90%',
-      avgSalary: '15K-25K/月',
-      matchScore: 75
-    },
-    {
-      id: '6',
-      name: '临床医学',
-      category: '医学',
-      duration: '5年',
-      courses: ['人体解剖学', '生理学', '药理学', '临床诊断'],
-      employmentRate: '100%',
-      avgSalary: '15K-30K/月',
-      matchScore: 70
-    },
-    {
-      id: '7',
-      name: '法学',
-      category: '法学',
-      duration: '4年',
-      courses: ['法理学', '宪法学', '民法学', '刑法学'],
-      employmentRate: '85%',
-      avgSalary: '12K-20K/月',
-      matchScore: 68
-    },
-    {
-      id: '8',
-      name: '英语',
-      category: '文学',
-      duration: '4年',
-      courses: ['高级英语', '翻译', '英美文学', '语言学'],
-      employmentRate: '88%',
-      avgSalary: '10K-18K/月',
-      matchScore: 65
-    },
-    {
-      id: '9',
-      name: '教育学',
-      category: '教育学',
-      duration: '4年',
-      courses: ['教育心理学', '课程论', '教学论', '教育研究方法'],
-      employmentRate: '92%',
-      avgSalary: '10K-15K/月',
-      matchScore: 62
-    },
-    {
-      id: '10',
-      name: '会计学',
-      category: '管理学',
-      duration: '4年',
-      courses: ['财务会计', '管理会计', '审计学', '财务管理'],
-      employmentRate: '93%',
-      avgSalary: '12K-20K/月',
-      matchScore: 72
-    }
-  ]);
 
   // 从后端API获取学科列表
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:8004/api/v1/major/categories');
+        const response = await fetch(`${API_BASE}/api/v1/major/categories`);
         const data = await response.json();
         setCategories(data.categories || []);
       } catch (error) {
         console.error('获取学科列表失败:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // 从后端API获取专业列表
+  useEffect(() => {
+    const fetchMajors = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/major/market-data?page_size=100`);
+        const data = await response.json();
+        
+        // 转换后端数据格式
+        const convertedMajors: Major[] = (data.data || []).map((item: MarketData) => ({
+          id: String(item.id),
+          name: item.major_name || item.title,
+          category: item.category || '未知',
+          duration: '4年',
+          courses: item.courses || [],
+          employmentRate: item.employment_rate ? `${item.employment_rate}%` : '暂无数据',
+          avgSalary: item.avg_salary || '暂无数据',
+          matchScore: item.heat_index || Math.floor(Math.random() * 30 + 60)
+        }));
+        
+        setMajors(convertedMajors);
+      } catch (error) {
+        console.error('获取专业列表失败:', error);
         // 如果API不可用，使用备用数据
+        setMajors(getBackupMajors());
       } finally {
         setLoading(false);
       }
     };
-
-    fetchCategories();
+    fetchMajors();
   }, []);
+
+  // 备用专业数据（API不可用时）
+  const getBackupMajors = (): Major[] => [
+    { id: '1', name: '计算机科学与技术', category: '工学', duration: '4年', courses: ['数据结构', '算法', '操作系统'], employmentRate: '95%', avgSalary: '18K-25K/月', matchScore: 95 },
+    { id: '2', name: '人工智能', category: '工学', duration: '4年', courses: ['机器学习', '深度学习', 'NLP'], employmentRate: '98%', avgSalary: '25K-35K/月', matchScore: 88 },
+    { id: '3', name: '数据科学与大数据技术', category: '理学', duration: '4年', courses: ['数据分析', '大数据处理'], employmentRate: '92%', avgSalary: '20K-30K/月', matchScore: 82 },
+    { id: '4', name: '软件工程', category: '工学', duration: '4年', courses: ['软件测试', '项目管理'], employmentRate: '94%', avgSalary: '18K-28K/月', matchScore: 79 },
+    { id: '5', name: '金融学', category: '经济学', duration: '4年', courses: ['货币银行学', '投资学'], employmentRate: '90%', avgSalary: '15K-25K/月', matchScore: 75 },
+    { id: '6', name: '临床医学', category: '医学', duration: '5年', courses: ['人体解剖学', '生理学'], employmentRate: '100%', avgSalary: '15K-30K/月', matchScore: 70 },
+    { id: '7', name: '法学', category: '法学', duration: '4年', courses: ['法理学', '宪法学'], employmentRate: '85%', avgSalary: '12K-20K/月', matchScore: 68 },
+    { id: '8', name: '英语', category: '文学', duration: '4年', courses: ['高级英语', '翻译'], employmentRate: '88%', avgSalary: '10K-18K/月', matchScore: 65 },
+    { id: '9', name: '教育学', category: '教育学', duration: '4年', courses: ['教育心理学', '课程论'], employmentRate: '92%', avgSalary: '10K-15K/月', matchScore: 62 },
+    { id: '10', name: '会计学', category: '管理学', duration: '4年', courses: ['财务会计', '审计学'], employmentRate: '93%', avgSalary: '12K-20K/月', matchScore: 72 }
+  ];
 
   // 过滤和排序后的专业列表
   const filteredAndSortedMajors = useMemo(() => {
     let result = [...majors];
 
-    // 1. 按学科过滤
     if (selectedCategory !== '全部学科') {
       result = result.filter(major => major.category === selectedCategory);
     }
 
-    // 2. 排序
     result.sort((a, b) => {
       switch (selectedSort) {
         case 'employmentRate':
@@ -182,7 +133,6 @@ const MajorsPage: React.FC = () => {
     return result;
   }, [majors, selectedCategory, selectedSort]);
 
-  // 获取筛选后的统计信息
   const stats = useMemo(() => {
     const count = filteredAndSortedMajors.length;
     const avgEmployment = count > 0
@@ -193,7 +143,6 @@ const MajorsPage: React.FC = () => {
 
   return (
     <div className="mx-4">
-      {/* 标题和筛选 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
         <h1 className="text-xl sm:text-3xl font-bold">📋 专业推荐</h1>
         <div className="flex flex-wrap gap-2">
@@ -220,7 +169,6 @@ const MajorsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 统计信息 */}
       {selectedCategory !== '全部学科' && (
         <div className="mb-4 p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-700">
@@ -230,7 +178,6 @@ const MajorsPage: React.FC = () => {
         </div>
       )}
 
-      {/* 专业列表 */}
       <div className="grid gap-4">
         {loading ? (
           <div className="text-center py-8 text-gray-500">
