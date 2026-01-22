@@ -2,167 +2,95 @@
 
 ## 功能描述
 
-对文档进行深度分析，提取文档结构、关键实体、主题信息和语义特征，支持多种分析维度和输出格式。
+对专业相关文档进行深度分析，提取关键信息、结构化内容和知识点。
+
+## 触发词
+
+分析、理解、提取、研究、解析
 
 ## 核心能力
 
-1. 分析文档结构和层次关系
-2. 提取关键实体（人名、地名、机构名、时间等）
-3. 识别文档主题和关键词
-4. 分析文档语义和情感倾向
-5. 提取文档之间的关联关系
-6. 生成文档结构化表示
+1. 文档结构分析
+2. 实体提取（人名、时间、事件）
+3. 主题识别和分类
+4. 关系抽取和知识图谱构建
 
 ---
 
 ## 分析维度
 
-| 分析类型 | 说明 | 适用场景 |
-|---------|------|---------|
-| `STRUCTURE` | 分析文档层次结构和章节关系 | 论文、报告分析 |
-| `ENTITY` | 提取文档中的命名实体 | 信息抽取、知识图谱 |
-| `TOPIC` | 识别文档主题和关键词 | 主题建模、文档分类 |
-| `SENTIMENT` | 分析文档情感倾向 | 舆情分析、评论分析 |
-| `RELATION` | 提取实体之间的关系 | 知识抽取、关系推理 |
-| `FULL` | 完整分析（包含所有维度） | 综合文档分析 |
-
----
-
-## 文档类型支持
-
-| 文档类型 | 特点 |
-|---------|------|
-| `ACADEMIC` | 学术论文，支持引用分析 |
-| `REPORT` | 分析报告，支持数据提取 |
-| `NEWS` | 新闻资讯，支持时效性分析 |
-| `LEGAL` | 法律文档，支持条款解析 |
-| `TECHNICAL` | 技术文档，支持代码注释 |
-| `GENERAL` | 通用文档 |
-
----
-
-## 实体提取规范
-
-### 1. 实体类型
-
-| 实体类型 | 说明 | 示例 |
+| 分析维度 | 说明 | 输出 |
 |---------|------|------|
-| `PERSON` | 人名 | 张三、李教授 |
-| `LOCATION` | 地名 | 北京、硅谷 |
-| `ORGANIZATION` | 机构名 | 清华大学、Google |
-| `TIME` | 时间 | 2024年、3年前 |
-| `PRODUCT` | 产品名 | GPT-4、iPhone |
-| `CONCEPT` | 概念名 | 人工智能、区块链 |
-| `EVENT` | 事件名 | 冬奥会、双十一 |
-
-### 2. 实体标注要求
-
-- ✅ **准确标注**：确保实体边界准确，不遗漏不冗余
-- ✅ **类型一致**：同一实体在不同上下文保持类型一致
-- ✅ **消歧处理**：同名实体通过上下文区分
+| 结构分析 | 识别标题、段落、列表 | 文档结构树 |
+| 实体识别 | 提取人名、时间、地点 | 实体列表 |
+| 主题分类 | 判断文档主题类别 | 分类标签 |
+| 关键信息 | 提取核心观点和数据 | 关键点列表 |
+| 情感分析 | 判断内容情感倾向 | 情感分数 |
 
 ---
 
-## 主题识别规范
+## 专业文档分析要点
 
-### 1. 关键词提取
+### 时间线分析
 
-- ✅ 提取**3-10个核心关键词**
-- ✅ 关键词要能**准确反映文档主题**
-- ✅ 包含**高频词**和**重要概念**
+| 分析项 | 说明 |
+|-------|------|
+| 起源时间 | 专业诞生的时间和背景 |
+| 发展阶段 | 关键发展阶段划分 |
+| 重要节点 | 重大突破或转折点 |
+| 当前状态 | 行业发展现状 |
+| 未来趋势 | 预测发展方向 |
 
-### 2. 主题建模
+### 关键信息提取
 
-- ✅ 自动识别文档所属主题类别
-- ✅ 计算主题相关度概率分布
-- ✅ 支持多主题文档识别
+| 信息类型 | 提取内容 |
+|---------|---------|
+| 人物 | 创始人、重要学者、代表人物 |
+| 事件 | 重要会议、突破、争议 |
+| 数据 | 市场规模、就业率、薪资 |
+| 机构 | 重要组织、公司、研究机构 |
 
 ---
 
-## 文档结构分析
+## 输入参数
 
-### 1. 层次结构
-
-- ✅ 识别文档的标题层级（H1-H6）
-- ✅ 建立章节之间的父子关系
-- ✅ 提取每个章节的核心内容
-
-### 2. 逻辑关系
-
-- ✅ 识别因果关系、递进关系、并列关系
-- ✅ 标注关键论点和论据
-- ✅ 提取文档的核心结论
+| 参数名 | 类型 | 必填 | 说明 |
+|-------|------|------|------|
+| content | string | 是 | 文档内容 |
+| major_name | string | 否 | 专业名称（用于上下文） |
+| analysis_type | string | 否 | 分析类型（full/quick/custom） |
 
 ---
 
 ## 输出格式
 
-### 完整分析结果
-
 ```json
 {
-  "document_id": "doc_123456",
-  "document_type": "ACADEMIC",
+  "success": true,
   "structure": {
-    "title": "文档标题",
-    "sections": [
-      {
-        "level": 1,
-        "title": "第一章 引言",
-        "content_summary": "本章介绍了研究背景...",
-        "subsections": []
-      }
-    ]
+    "headings": ["起源", "发展", "现状", "未来"],
+    "paragraphs_count": 15,
+    "lists": []
   },
-  "entities": [
-    {
-      "text": "张三",
-      "type": "PERSON",
-      "position": {"start": 100, "end": 102},
-      "frequency": 5
-    }
-  ],
-  "keywords": ["人工智能", "深度学习", "神经网络"],
-  "topics": [
-    {"topic": "机器学习", "probability": 0.85},
-    {"topic": "计算机视觉", "probability": 0.65}
+  "entities": {
+    "people": ["约翰·麦卡锡", "图灵"],
+    "dates": ["1956年", "2012年"],
+    "places": ["美国", "英国"]
+  },
+  "topics": ["人工智能", "机器学习", "深度学习"],
+  "key_info": [
+    "1956年达特茅斯会议标志AI诞生",
+    "2012年深度学习突破"
   ],
   "sentiment": {
-    "overall": "positive",
-    "score": 0.75
+    "score": 0.8,
+    "label": "positive"
   },
-  "relations": [
-    {
-      "subject": "张三",
-      "predicate": "提出",
-      "object": "新算法"
-    }
-  ],
-  "summary": "本文主要介绍了..."
-}
-```
-
-### 实体提取结果
-
-```json
-{
-  "entities": [
-    {
-      "text": "OpenAI",
-      "type": "ORGANIZATION",
-      "mentions": [
-        {"position": {"start": 50, "end": 55}, "context": "OpenAI发布..."}
-      ]
-    }
-  ],
-  "statistics": {
-    "total_entities": 45,
-    "by_type": {
-      "PERSON": 12,
-      "ORGANIZATION": 15,
-      "LOCATION": 8,
-      "TIME": 10
-    }
+  "timeline": {
+    "origin": {"time": "1956年", "event": "达特茅斯会议"},
+    "development": ["两次AI寒冬", "2012年深度学习突破"],
+    "current": "大模型时代",
+    "future": "通用人工智能"
   }
 }
 ```
@@ -172,34 +100,26 @@
 ## 使用示例
 
 ```python
-from doc_analyze import DocumentAnalyzer, AnalysisType, DocumentType
+from doc_analyze import DocumentAnalyzer
 
 analyzer = DocumentAnalyzer()
 
-# 完整分析
+# 分析专业介绍文档
 result = analyzer.analyze(
     content=document_text,
-    document_type=DocumentType.ACADEMIC,
-    analysis_type=AnalysisType.FULL
+    major_name="人工智能",
+    analysis_type="full"
 )
 
-print(result.structure)
+print(result.success)
 print(result.entities)
-print(result.keywords)
-
-# 只提取实体
-entity_result = analyzer.analyze(
-    content=document_text,
-    analysis_type=AnalysisType.ENTITY
-)
-
-print(entity_result.entities)
+print(result.timeline)
 ```
 
 ---
 
 ## 与其他Skill的配合
 
-- **doc-crawler**：先使用文档爬取Skill获取文档内容
-- **doc-summarize**：分析结果可进一步使用文档总结Skill生成摘要
-- **doc-generate**：分析结果可作为文档生成的输入
+- **doc-crawler**：分析爬取的原始内容
+- **doc-summarize**：分析结果可作为总结的基础
+- **doc-generate**：分析结果可用于内容生成
