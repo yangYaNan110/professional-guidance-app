@@ -30,24 +30,25 @@ body {
   overflow-x: hidden;
 }
 
-/* 移动端响应式 */
-@media (max-width: 768px) {
-  body {
-    font-size: 14px;
+  /* 移动端响应式 */
+  @media (max-width: 768px) {
+    body {
+      font-size: 14px;
+    }
+    
+    .container {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    
+    .card {
+      padding: 16px;
+      margin-left: -16px;
+      margin-right: -16px;
+      border-radius: 0;
+      background-color: white !important;
+    }
   }
-  
-  .container {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  
-  .card {
-    padding: 16px;
-    margin-left: -16px;
-    margin-right: -16px;
-    border-radius: 0;
-  }
-}
 
 /* 深色模式样式 */
 [data-theme="dark"] {
@@ -58,6 +59,12 @@ body {
 [data-theme="dark"] .card {
   background-color: #1f2937;
   border-color: #374151;
+}
+
+/* 确保亮色模式下卡片是白色 */
+[data-theme="light"] .card {
+  background-color: #ffffff !important;
+  border-color: #f3f4f6;
 }
 
 [data-theme="dark"] .btn-primary {

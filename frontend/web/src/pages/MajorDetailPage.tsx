@@ -303,7 +303,7 @@ const MajorDetailPage: React.FC = () => {
         ← 返回专业列表
       </motion.button>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card bg-white dark:bg-gray-800">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card">
         <div className="border-b border-gray-100 dark:border-gray-700 pb-4 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">{major.major_name}</h1>
           <div className="flex flex-wrap gap-3">
