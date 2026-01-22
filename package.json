@@ -2,26 +2,40 @@
   "name": "professional-guidance-app",
   "version": "1.0.0",
   "description": "智能专业选择指导应用 - AI驱动的专业发展助手",
-  "author": "Professional App Team",  
+  "author": "Professional App Team",
   "license": "MIT",
   "scripts": {
-    "start": "echo '请选择启动方式:' && echo '  npm run start:local  - 本地启动（推荐）' && echo '  npm run start:docker - Docker容器启动'",
-    "start:local": "echo '启动本地服务...' && echo '请手动运行:' && echo '  1. cd backend/user-service && python src/main.py' && echo '  2. cd backend/chat-service && python src/main.py' && echo '  3. cd frontend/web && npm run dev'",
+    "start": "npm run start:local",
+    "start:local": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run open:web\"",
+    "start:backend": "echo '启动后端服务...' && (cd backend/user-service && python src/main.py > /tmp/user-service.log 2>&1 &) && (cd backend/chat-service && python src/main.py > /tmp/chat-service.log 2>&1 &) && sleep 2 && echo '后端服务已启动 (端口: 8001, 8003)'",
+    "start:frontend": "echo '启动前端...' && (cd frontend/web && npm run dev > /tmp/frontend.log 2>&1 &) && sleep 3 && echo '前端已启动'",
+    "open:web": "echo '打开浏览器...' && sleep 3 && open http://localhost:3000",
     "start:docker": "docker-compose up -d",
     "stop": "docker-compose down",
     "restart": "docker-compose restart",
     "logs": "docker-compose logs -f",
+    "logs:backend": "tail -f /tmp/user-service.log /tmp/chat-service.log",
+    "logs:frontend": "tail -f /tmp/frontend.log",
+    "install:all": "npm run install:backend && npm run install:frontend && npm run install:mobile",
     "install:backend": "pip install -r backend/requirements.txt",
     "install:frontend": "cd frontend/web && npm install",
+    "install:mobile": "cd frontend/mobile && npm install",
+    "dev:mobile": "cd frontend/mobile && npm run dev:h5",
+    "dev:weapp": "cd frontend/mobile && npm run dev:weapp",
+    "dev:rn": "cd frontend/mobile && npm run dev:rn",
     "test:backend": "cd backend && pytest",
     "test:frontend": "cd frontend/web && npm run test",
+    "test:mobile": "cd frontend/mobile && npm run test",
     "lint:backend": "ruff check backend/ && black --check backend/",
     "lint:frontend": "cd frontend/web && npm run lint",
+    "lint:mobile": "cd frontend/mobile && npm run lint",
     "build": "docker-compose build",
     "build:frontend": "cd frontend/web && npm run build",
+    "build:mobile:weapp": "cd frontend/mobile && npm run build:weapp",
+    "build:mobile:h5": "cd frontend/mobile && npm run build:h5",
     "deploy:staging": "echo '部署到测试环境'",
     "deploy:prod": "echo '部署到生产环境'",
-    "ci:check": "npm run lint:backend && npm run lint:frontend",
+    "ci:check": "npm run lint:backend && npm run lint:frontend && npm run lint:mobile",
     "ci:test": "npm run test:backend && npm run test:frontend"
   },
   "engines": {
@@ -34,10 +48,13 @@
     "career-guidance",
     "ai-assistant",
     "voice-interaction",
-    "professional-recommendation" 
+    "professional-recommendation"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/yangYaNan110/professional-guidance-app"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
