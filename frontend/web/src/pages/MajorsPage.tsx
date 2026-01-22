@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 interface Category {
@@ -85,6 +86,7 @@ const SORT_OPTIONS = [
 const API_BASE = 'http://localhost:8004';
 
 const MajorsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [majors, setMajors] = useState<Major[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('全部学科');
@@ -277,7 +279,10 @@ const MajorsPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                <button className="btn-primary w-full sm:w-auto text-sm py-1.5 px-4">
+                <button 
+                  onClick={() => navigate(`/majors/${major.id}`)}
+                  className="btn-primary w-full sm:w-auto text-sm py-1.5 px-4"
+                >
                   查看详情
                 </button>
               </div>
