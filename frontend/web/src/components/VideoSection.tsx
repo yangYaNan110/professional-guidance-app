@@ -96,9 +96,9 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
     fetchData();
   }, [majorName]);
 
-  // 自动滚动热点事件
+  // 自动滚动热点事件（垂直滚动）
   useEffect(() => {
-    if (hotEvents.length <= 4 || !scrollRef.current || isPaused) {
+    if (hotEvents.length <= 3 || !scrollRef.current || isPaused) {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
@@ -108,7 +108,7 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
 
     const scrollContainer = scrollRef.current;
     let scrollPos = 0;
-    const scrollSpeed = 0.3;
+    const scrollSpeed = 0.5;
 
     const animate = () => {
       if (!scrollContainer || isPaused) {
@@ -117,13 +117,13 @@ const VideoSection: React.FC<VideoSectionProps> = ({ majorName }) => {
       }
 
       scrollPos += scrollSpeed;
-      const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+      const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
       
       if (scrollPos >= maxScroll) {
         scrollPos = 0;
       }
       
-      scrollContainer.scrollLeft = scrollPos;
+      scrollContainer.scrollTop = scrollPos;
       animationRef.current = requestAnimationFrame(animate);
     };
 
