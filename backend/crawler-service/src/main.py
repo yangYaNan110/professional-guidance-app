@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 import uuid
 
@@ -1984,6 +1984,155 @@ class UniversityDataService:
             }
         }
 
+    def get_recommended_universities_new(
+        self,
+        province: str = None,
+        score: int = None,
+        major_name: str = None,
+        limit_per_group: int = 5
+    ) -> Dict[str, List[Dict]]:
+        """
+        获取推荐大学列表（新版推荐算法）
+
+        场景A（省份+分数+专业）：同省分数匹配 + 全国分数和专业匹配
+        场景B（只有省份+专业）：同省优质 + 全国优质
+        场景C（什么都没填+专业）：全国优质
+        """
+        result = {
+            "score_match": [],      # 分数匹配大学
+            "province_match": [],   # 同省优质大学
+            "national_match": []    # 全国推荐大学
+        }
+
+        if not major_name:
+            return result
+
+        # 场景A：省份+分数+专业
+        if province and score:
+            score_min = score - 30
+            score_max = score + 30
+
+            # 同省分数匹配大学
+            group = []
+            shown_ids = set()
+            for u in self.universities:
+                if u["province"] != province:
+                    continue
+
+                # 获取该省分数
+                scores = [s for s in u.get("admission_scores", []) if s["province"] == province]
+                latest = scores[0] if scores else None
+                if not latest:
+                    continue
+
+                score_val = latest["min_score"]
+                if score_min <= score_val <= score_max:
+                    major_score = 100 if major_name in u.get("major_strengths", []) else 0
+                    group.append({
+                        **u,
+                        "match_type": "score",
+                        "match_reason": f"录取分{int(score_val)}分，与您分数({score}分)匹配",
+                        "latest_score": latest,
+                        "major_match_score": major_score,
+                        "score_match_score": 100 - abs(score_val - score)
+                    })
+                    shown_ids.add(u["id"])
+
+            group.sort(key=lambda x: (x.get("score_match_score", 0), x.get("major_match_score", 0), x["employment_rate"]), reverse=True)
+            result["score_match"] = group[:limit_per_group]
+            shown_ids = set(u["id"] for u in result["score_match"])
+
+            # 全国分数和专业匹配大学（排除同省已显示的）
+            group2 = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+
+                # 获取任意省份的分数
+                latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                if not latest:
+                    continue
+
+                score_val = latest["min_score"]
+                if score_min <= score_val <= score_max:
+                    major_score = 100 if major_name in u.get("major_strengths", []) else 0
+                    if major_score > 0:  # 只返回专业匹配的
+                        group2.append({
+                            **u,
+                            "match_type": "national",
+                            "match_reason": f"{major_name}专业实力强，{u['level']}高校",
+                            "latest_score": latest,
+                            "major_match_score": major_score,
+                            "score_match_score": 100 - abs(score_val - score)
+                        })
+
+            group2.sort(key=lambda x: (x.get("score_match_score", 0), x.get("major_match_score", 0), x["employment_rate"]), reverse=True)
+            result["national_match"] = group2[:limit_per_group]
+
+        # 场景B：只有省份+专业
+        elif province and not score:
+            # 同省优质大学
+            group = []
+            for u in self.universities:
+                if u["province"] != province:
+                    continue
+
+                major_score = 100 if major_name in u.get("major_strengths", []) else 60 if any(m in u.get("major_strengths", []) for m in [major_name[:2] + "工程", major_name[:2] + "科学", major_name[:2] + "技术"]) else 0
+                if major_score > 0:
+                    scores = [s for s in u.get("admission_scores", []) if s["province"] == province]
+                    latest = scores[0] if scores else u["admission_scores"][0] if u.get("admission_scores") else None
+                    group.append({
+                        **u,
+                        "match_type": "province",
+                        "match_reason": f"本省{province}高校，{major_name}专业实力较强",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
+
+            group.sort(key=lambda x: (x.get("major_match_score", 0), x["employment_rate"]), reverse=True)
+            result["province_match"] = group[:limit_per_group]
+
+            # 全国优质大学（排除同省）
+            shown_ids = set(u["id"] for u in result["province_match"])
+            group2 = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+
+                major_score = 100 if major_name in u.get("major_strengths", []) else 60 if any(m in u.get("major_strengths", []) for m in [major_name[:2] + "工程", major_name[:2] + "科学", major_name[:2] + "技术"]) else 0
+                if major_score > 0:
+                    latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                    group2.append({
+                        **u,
+                        "match_type": "national",
+                        "match_reason": f"{major_name}专业实力强，全国知名",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
+
+            group2.sort(key=lambda x: (x.get("major_match_score", 0), x["employment_rate"]), reverse=True)
+            result["national_match"] = group2[:limit_per_group]
+
+        # 场景C：什么都没填+专业（全国优质大学）
+        else:
+            group = []
+            for u in self.universities:
+                major_score = 100 if major_name in u.get("major_strengths", []) else 60 if any(m in u.get("major_strengths", []) for m in [major_name[:2] + "工程", major_name[:2] + "科学", major_name[:2] + "技术"]) else 0
+                if major_score > 0:
+                    latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                    group.append({
+                        **u,
+                        "match_type": "national",
+                        "match_reason": f"{major_name}专业实力强，{u['level']}高校，就业率{u['employment_rate']}%",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
+
+            group.sort(key=lambda x: (x.get("major_match_score", 0), x["employment_rate"]), reverse=True)
+            result["national_match"] = group[:limit_per_group * 2]
+
+        return result
+
 # 创建大学数据服务实例
 university_service = UniversityDataService()
 
@@ -2022,18 +2171,79 @@ async def get_recommended_universities(
     major: str = None,
     limit: int = 10
 ):
-    """获取推荐大学列表（根据用户目标）"""
+    """
+    获取推荐大学列表（根据用户目标）
+    
+    返回分组结果：
+    - score_match: 分数匹配大学（当设置省份和分数时）
+    - province_match: 同省优质大学（当只设置省份时）
+    - national_match: 全国推荐大学（所有场景）
+    """
     try:
-        result = university_service.get_recommended_universities(
+        # 使用新版推荐函数返回分组结果
+        result = university_service.get_recommended_universities_new(
             province=province,
             score=score,
-            major=major,
-            limit=limit
+            major_name=major,
+            limit_per_group=limit
         )
-        return result
+        
+        # 构建响应
+        universities = []
+        
+        # 分数匹配大学
+        for u in result.get("score_match", []):
+            u["match_type"] = "score"
+            universities.append(u)
+        
+        # 同省优质大学
+        for u in result.get("province_match", []):
+            u["match_type"] = "province"
+            universities.append(u)
+        
+        # 全国推荐大学
+        for u in result.get("national_match", []):
+            u["match_type"] = "national"
+            universities.append(u)
+        
+        # 返回分组信息
+        return {
+            "universities": universities,
+            "groups": {
+                "score_match": {
+                    "name": "🏆 分数匹配大学",
+                    "count": len(result.get("score_match", [])),
+                    "description": "录取分数在您预估分数±30分范围内的高校"
+                } if result.get("score_match") else None,
+                "province_match": {
+                    "name": "📍 同省优质大学",
+                    "count": len(result.get("province_match", [])),
+                    "description": "您所在省份内该专业的优质高校"
+                } if result.get("province_match") else None,
+                "national_match": {
+                    "name": "🌟 全国推荐大学",
+                    "count": len(result.get("national_match", [])),
+                    "description": "全国范围内该专业的优质高校"
+                } if result.get("national_match") else None
+            },
+            "scenario": determine_recommend_scenario(province, score, major),
+            "total": len(universities)
+        }
     except Exception as e:
         logger.error(f"获取推荐大学失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def determine_recommend_scenario(province: str, score: int, major: str) -> str:
+    """确定推荐场景"""
+    if province and score and major:
+        return "A"  # 省份+分数+专业
+    elif province and major:
+        return "B"  # 只有省份+专业
+    elif major:
+        return "C"  # 什么都没填+专业
+    else:
+        return "unknown"
 
 @app.get("/api/v1/universities/{university_id}")
 async def get_university_detail(university_id: int):

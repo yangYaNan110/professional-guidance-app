@@ -282,6 +282,229 @@ class UniversityDataService:
             
             return cursor.fetchall()
     
+    def get_recommended_universities_new(
+        self,
+        province: str = None,
+        score: int = None,
+        major_name: str = None,
+        limit_per_group: int = 5
+    ) -> Dict[str, List[Dict]]:
+        """
+        获取推荐大学列表（新版推荐算法）
+        
+        场景A（省份+分数+专业）：同省分数匹配 + 全国分数和专业匹配
+        场景B（只有省份+专业）：同省优质 + 全国优质
+        场景C（什么都没填+专业）：全国优质
+        """
+        result = {
+            "score_match": [],      # 分数匹配大学
+            "province_match": [],   # 同省优质大学
+            "national_match": []    # 全国推荐大学
+        }
+        
+        if not major_name:
+            return result
+            
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            # 场景A：省份+分数+专业
+            if province and score:
+                score_min = score - 30
+                score_max = score + 30
+                
+                # 同省分数匹配大学
+                cursor.execute("""
+                    SELECT 
+                        u.id as university_id,
+                        u.name as university_name,
+                        u.province as university_province,
+                        u.city,
+                        u.level,
+                        u.employment_rate,
+                        u.major_strengths,
+                        s.min_score,
+                        s.max_score,
+                        s.avg_score,
+                        s.year as score_year,
+                        CASE 
+                            WHEN m.name = ANY(u.major_strengths) THEN 100
+                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
+                            ELSE 0
+                        END as major_match_score,
+                        CASE 
+                            WHEN s.min_score IS NOT NULL THEN 
+                                100 - ABS(s.min_score - %s)
+                            ELSE 50
+                        END as score_match_score
+                    FROM universities u
+                    CROSS JOIN majors m
+                    LEFT JOIN LATERAL (
+                        SELECT * FROM university_admission_scores 
+                        WHERE university_id = u.id 
+                        AND province = %s
+                        AND year >= EXTRACT(YEAR FROM NOW()) - 1
+                        ORDER BY year DESC
+                        LIMIT 1
+                    ) s ON true
+                    WHERE u.province = %s
+                    AND m.name = %s
+                    AND (s.min_score IS NULL OR (s.min_score >= %s AND s.min_score <= %s))
+                    ORDER BY score_match_score DESC, major_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (score, province, province, major_name, score_min, score_max, limit_per_group))
+                result["score_match"] = cursor.fetchall()
+                
+                # 全国分数和专业匹配大学（排除同省已显示的）
+                cursor.execute("""
+                    SELECT 
+                        u.id as university_id,
+                        u.name as university_name,
+                        u.province as university_province,
+                        u.city,
+                        u.level,
+                        u.employment_rate,
+                        u.major_strengths,
+                        s.min_score,
+                        s.max_score,
+                        s.avg_score,
+                        s.year as score_year,
+                        CASE 
+                            WHEN m.name = ANY(u.major_strengths) THEN 100
+                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
+                            ELSE 0
+                        END as major_match_score,
+                        CASE 
+                            WHEN s.min_score IS NOT NULL THEN 
+                                100 - ABS(s.min_score - %s)
+                            ELSE 50
+                        END as score_match_score
+                    FROM universities u
+                    CROSS JOIN majors m
+                    LEFT JOIN LATERAL (
+                        SELECT * FROM university_admission_scores 
+                        WHERE university_id = u.id 
+                        AND year >= EXTRACT(YEAR FROM NOW()) - 1
+                        ORDER BY year DESC
+                        LIMIT 1
+                    ) s ON true
+                    WHERE u.province != %s
+                    AND m.name = %s
+                    AND (s.min_score IS NULL OR (s.min_score >= %s AND s.min_score <= %s))
+                    ORDER BY score_match_score DESC, major_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (score, province, major_name, score_min, score_max, limit_per_group))
+                result["national_match"] = cursor.fetchall()
+            
+            # 场景B：只有省份+专业
+            elif province and not score:
+                # 同省优质大学
+                cursor.execute("""
+                    SELECT 
+                        u.id as university_id,
+                        u.name as university_name,
+                        u.province as university_province,
+                        u.city,
+                        u.level,
+                        u.employment_rate,
+                        u.major_strengths,
+                        s.min_score,
+                        s.max_score,
+                        s.avg_score,
+                        s.year as score_year,
+                        CASE 
+                            WHEN m.name = ANY(u.major_strengths) THEN 100
+                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
+                            ELSE 0
+                        END as major_match_score
+                    FROM universities u
+                    CROSS JOIN majors m
+                    LEFT JOIN LATERAL (
+                        SELECT * FROM university_admission_scores 
+                        WHERE university_id = u.id 
+                        AND province = u.province
+                        AND year >= EXTRACT(YEAR FROM NOW()) - 1
+                        ORDER BY year DESC
+                        LIMIT 1
+                    ) s ON true
+                    WHERE u.province = %s
+                    AND m.name = %s
+                    ORDER BY major_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (province, major_name, limit_per_group))
+                result["province_match"] = cursor.fetchall()
+                
+                # 全国优质大学（排除同省）
+                cursor.execute("""
+                    SELECT 
+                        u.id as university_id,
+                        u.name as university_name,
+                        u.province as university_province,
+                        u.city,
+                        u.level,
+                        u.employment_rate,
+                        u.major_strengths,
+                        s.min_score,
+                        s.max_score,
+                        s.avg_score,
+                        s.year as score_year,
+                        CASE 
+                            WHEN m.name = ANY(u.major_strengths) THEN 100
+                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
+                            ELSE 0
+                        END as major_match_score
+                    FROM universities u
+                    CROSS JOIN majors m
+                    LEFT JOIN LATERAL (
+                        SELECT * FROM university_admission_scores 
+                        WHERE university_id = u.id 
+                        AND year >= EXTRACT(YEAR FROM NOW()) - 1
+                        ORDER BY year DESC
+                        LIMIT 1
+                    ) s ON true
+                    WHERE u.province != %s
+                    AND m.name = %s
+                    ORDER BY major_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (province, major_name, limit_per_group))
+                result["national_match"] = cursor.fetchall()
+            
+            # 场景C：什么都没填+专业（全国优质大学）
+            else:
+                # 全国优质大学
+                cursor.execute("""
+                    SELECT 
+                        u.id as university_id,
+                        u.name as university_name,
+                        u.province as university_province,
+                        u.city,
+                        u.level,
+                        u.employment_rate,
+                        u.major_strengths,
+                        s.min_score,
+                        s.max_score,
+                        s.avg_score,
+                        s.year as score_year,
+                        CASE 
+                            WHEN m.name = ANY(u.major_strengths) THEN 100
+                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
+                            ELSE 0
+                        END as major_match_score
+                    FROM universities u
+                    CROSS JOIN majors m
+                    LEFT JOIN LATERAL (
+                        SELECT * FROM university_admission_scores 
+                        WHERE university_id = u.id 
+                        AND year >= EXTRACT(YEAR FROM NOW()) - 1
+                        ORDER BY year DESC
+                        LIMIT 1
+                    ) s ON true
+                    WHERE m.name = %s
+                    ORDER BY major_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (major_name, limit_per_group * 2))
+                result["national_match"] = cursor.fetchall()
+        
+        return result
+    
     def get_recommended_universities(
         self,
         province: str = None,
@@ -289,57 +512,22 @@ class UniversityDataService:
         major_name: str = None,
         limit: int = 10
     ) -> List[Dict]:
-        """获取推荐大学列表（核心推荐算法）"""
-        with self.conn.cursor(cursor_factory=RealDictCursor) as cursor:
-            # 构建推荐查询
-            conditions = []
-            params = []
-            
-            if province:
-                conditions.append("(u.province = %s OR s.province = %s)")
-                params.extend([province, province])
-            
-            where_clause = " AND ".join(conditions) if conditions else "1=1"
-            
-            # 推荐算法：根据省份、分数、专业匹配度综合排序
-            cursor.execute(f"""
-                SELECT 
-                    u.id as university_id,
-                    u.name as university_name,
-                    u.province as university_province,
-                    u.city,
-                    u.level,
-                    u.employment_rate,
-                    u.major_strengths,
-                    m.id as major_id,
-                    m.name as major_name,
-                    s.min_score,
-                    s.max_score,
-                    s.avg_score,
-                    s.province as score_province,
-                    s.year as score_year,
-                    s.admission_type,
-                    CASE 
-                        WHEN m.name = ANY(u.major_strengths) THEN 100
-                        WHEN u.major_strengths && ARRAY[m.name] THEN 60
-                        ELSE 0
-                    END as major_match_score
-                FROM universities u
-                CROSS JOIN majors m
-                LEFT JOIN LATERAL (
-                    SELECT * FROM university_admission_scores 
-                    WHERE university_id = u.id 
-                    AND year >= EXTRACT(YEAR FROM NOW()) - 1
-                    ORDER BY year DESC
-                    LIMIT 1
-                ) s ON true
-                WHERE {where_clause}
-                AND m.name = %s
-                ORDER BY major_match_score DESC, u.employment_rate DESC
-                LIMIT %s
-            """, (*params, major_name, limit))
-            
-            return cursor.fetchall()
+        """获取推荐大学列表（兼容旧版本）- 返回扁平列表"""
+        result = self.get_recommended_universities_new(province, score, major_name, limit)
+        
+        # 合并所有结果
+        all_universities = []
+        for university in result.get("score_match", []):
+            university["match_type"] = "score"
+            all_universities.append(university)
+        for university in result.get("province_match", []):
+            university["match_type"] = "province"
+            all_universities.append(university)
+        for university in result.get("national_match", []):
+            university["match_type"] = "national"
+            all_universities.append(university)
+        
+        return all_universities
     
     # ==================== 爬取历史 ====================
     
