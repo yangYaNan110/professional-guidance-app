@@ -17,7 +17,8 @@ from models.database import (
     MajorCategory, MajorListResponse, UniversityListResponse,
     MajorMarketDataListResponse, AdmissionScoreListResponse,
     IndustryTrendListResponse, VideoContentListResponse,
-    CrawlHistoryListResponse, CrawlQuotaListResponse
+    CrawlHistoryListResponse, CrawlQuotaListResponse,
+    HotNews, HotNewsBase, HotNewsListResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -752,4 +753,213 @@ class CrawlerDataService:
         except Exception as e:
             conn.rollback()
             logger.error(f"重置配额使用计数失败: {e}")
+            raise
+    
+    # =====================================================
+    # 热点资讯操作
+    # =====================================================
+    
+    def get_hot_news(
+        self,
+        category: Optional[str] = None,
+        related_major: Optional[str] = None,
+        source: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+        order_by: str = "heat_index"
+    ) -> HotNewsListResponse:
+        """获取热点资讯列表"""
+        conn = self._get_connection()
+        try:
+            offset = (page - 1) * page_size
+            conditions = []
+            params = []
+            
+            if category:
+                conditions.append("category = %s")
+                params.append(category)
+            if related_major:
+                conditions.append("related_major = %s")
+                params.append(related_major)
+            if source:
+                conditions.append("source = %s")
+                params.append(source)
+            
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+            order_column = "heat_index" if order_by == "heat_index" else "publish_time"
+            
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(f"SELECT COUNT(*) FROM hot_news WHERE {where_clause}", tuple(params))
+                count_result = cursor.fetchone()
+                total = count_result['count'] if count_result else 0
+
+                params.extend([page_size, offset])
+                cursor.execute(f"""
+                    SELECT * FROM hot_news 
+                    WHERE {where_clause} 
+                    ORDER BY {order_column} DESC 
+                    LIMIT %s OFFSET %s
+                """, tuple(params))
+                rows = cursor.fetchall()
+                
+                data = []
+                for row in rows:
+                    row_dict = dict(row)
+                    if row_dict.get('publish_time') and isinstance(row_dict['publish_time'], str):
+                        try:
+                            row_dict['publish_time'] = datetime.fromisoformat(row_dict['publish_time'].replace('Z', '+00:00'))
+                        except:
+                            pass
+                    data.append(HotNews(**row_dict))
+                
+                return HotNewsListResponse(
+                    data=data,
+                    total=total,
+                    page=page,
+                    page_size=page_size
+                )
+        except Exception as e:
+            logger.error(f"获取热点资讯列表失败: {e}")
+            raise
+    
+    def get_hot_news_by_major(self, major: str, limit: int = 10) -> HotNewsListResponse:
+        """获取指定专业的热点资讯"""
+        return self.get_hot_news(related_major=major, page=1, page_size=limit)
+    
+    def get_hot_news_by_category(self, category: str, limit: int = 10) -> HotNewsListResponse:
+        """获取指定分类的热点资讯"""
+        return self.get_hot_news(category=category, page=1, page_size=limit)
+    
+    def get_hot_news_trending(self, limit: int = 20) -> HotNewsListResponse:
+        """获取热门趋势资讯（按热度排序）"""
+        return self.get_hot_news(page=1, page_size=limit, order_by="heat_index")
+    
+    def get_hot_news_recent(self, hours: int = 24, limit: int = 20) -> HotNewsListResponse:
+        """获取最近发布的热点资讯"""
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT * FROM hot_news 
+                    WHERE publish_time >= NOW() - INTERVAL '%s hours'
+                    ORDER BY publish_time DESC 
+                    LIMIT %s
+                """, (hours, limit))
+                rows = cursor.fetchall()
+                
+                data = []
+                for row in rows:
+                    row_dict = dict(row)
+                    if row_dict.get('publish_time') and isinstance(row_dict['publish_time'], str):
+                        try:
+                            row_dict['publish_time'] = datetime.fromisoformat(row_dict['publish_time'].replace('Z', '+00:00'))
+                        except:
+                            pass
+                    data.append(HotNews(**row_dict))
+                
+                return HotNewsListResponse(
+                    data=data,
+                    total=len(data),
+                    page=1,
+                    page_size=limit
+                )
+        except Exception as e:
+            logger.error(f"获取最近热点资讯失败: {e}")
+            raise
+    
+    def add_hot_news(self, news: HotNewsBase) -> int:
+        """添加热点资讯"""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO hot_news (title, summary, source, source_url, publish_time, related_major, category, view_count, heat_index)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    news.title, news.summary, news.source, news.source_url,
+                    news.publish_time, news.related_major, news.category,
+                    news.view_count, news.heat_index
+                ))
+                result = cursor.fetchone()
+                conn.commit()
+                return result[0] if result else 0
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"添加热点资讯失败: {e}")
+            raise
+    
+    def batch_add_hot_news(self, news_list: List[HotNewsBase]) -> int:
+        """批量添加热点资讯"""
+        if not news_list:
+            return 0
+        
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                for news in news_list:
+                    # 检查是否已存在（根据source_url去重）
+                    if news.source_url:
+                        cursor.execute("SELECT id FROM hot_news WHERE source_url = %s", (news.source_url,))
+                        if cursor.fetchone():
+                            continue  # 跳过已存在的记录
+                    
+                    cursor.execute("""
+                        INSERT INTO hot_news (title, summary, source, source_url, publish_time, related_major, category, view_count, heat_index)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        news.title, news.summary, news.source, news.source_url,
+                        news.publish_time, news.related_major, news.category,
+                        news.view_count, news.heat_index
+                    ))
+                conn.commit()
+                return cursor.rowcount
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"批量添加热点资讯失败: {e}")
+            raise
+    
+    def update_hot_news_heat(self, news_id: int, heat_index: float) -> bool:
+        """更新热点资讯热度"""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE hot_news SET heat_index = %s, updated_at = NOW() WHERE id = %s
+                """, (heat_index, news_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"更新热点资讯热度失败: {e}")
+            raise
+    
+    def delete_hot_news(self, news_id: int) -> bool:
+        """删除热点资讯"""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM hot_news WHERE id = %s", (news_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"删除热点资讯失败: {e}")
+            raise
+    
+    def cleanup_old_hot_news(self, days: int = 180) -> int:
+        """清理旧热点资讯"""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    DELETE FROM hot_news 
+                    WHERE crawled_at < NOW() - INTERVAL '%s days'
+                    AND heat_index < 50
+                """, (days,))
+                conn.commit()
+                return cursor.rowcount
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"清理旧热点资讯失败: {e}")
             raise

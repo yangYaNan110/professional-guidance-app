@@ -205,6 +205,31 @@ CREATE TABLE IF NOT EXISTS crawl_quota (
 CREATE INDEX IF NOT EXISTS idx_crawl_quota_priority ON crawl_quota(priority DESC);
 
 -- =====================================================
+-- 10. 热点资讯表
+-- =====================================================
+CREATE TABLE IF NOT EXISTS hot_news (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    summary TEXT,
+    source VARCHAR(100) NOT NULL,
+    source_url VARCHAR(1000),
+    publish_time TIMESTAMP,
+    related_major VARCHAR(200),
+    category VARCHAR(100),
+    view_count INT DEFAULT 0,
+    heat_index DECIMAL(5,2) DEFAULT 0,
+    crawled_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_hot_news_crawled ON hot_news(crawled_at DESC);
+CREATE INDEX IF NOT EXISTS idx_hot_news_heat ON hot_news(heat_index DESC);
+CREATE INDEX IF NOT EXISTS idx_hot_news_major ON hot_news(related_major);
+CREATE INDEX IF NOT EXISTS idx_hot_news_category ON hot_news(category);
+CREATE INDEX IF NOT EXISTS idx_hot_news_source ON hot_news(source);
+CREATE INDEX IF NOT EXISTS idx_hot_news_publish ON hot_news(publish_time DESC);
+
+-- =====================================================
 -- 初始数据：学科分类（12个一级学科）
 -- =====================================================
 INSERT INTO major_categories (code, name, parent_id, sort_order) VALUES

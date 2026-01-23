@@ -24,7 +24,8 @@ from services.redis_cache_service import RedisCacheService, CacheKeyBuilder
 from models.database import (
     MajorListResponse, UniversityListResponse, MajorMarketDataListResponse,
     AdmissionScoreListResponse, IndustryTrendListResponse,
-    VideoContentListResponse, CrawlHistoryListResponse, CrawlQuotaListResponse
+    VideoContentListResponse, CrawlHistoryListResponse, CrawlQuotaListResponse,
+    HotNewsListResponse
 )
 
 router = APIRouter(prefix="/api/v1/data", tags=["爬虫数据"])
@@ -427,5 +428,72 @@ async def trigger_full_crawl(task_type: str = "all"):
                     "task_type": task_type
                 }
                 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# 热点资讯API（带缓存）
+# =====================================================
+
+@router.get("/hot-news", response_model=HotNewsListResponse)
+async def get_hot_news(
+    category: Optional[str] = None,
+    related_major: Optional[str] = None,
+    source: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    order_by: str = Query("heat_index", regex="^(heat_index|publish_time)$")
+):
+    """获取热点资讯列表（从数据库读取，支持Redis缓存）"""
+    try:
+        result = data_service.get_hot_news(
+            category=category,
+            related_major=related_major,
+            source=source,
+            page=page,
+            page_size=page_size,
+            order_by=order_by
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hot-news/trending", response_model=HotNewsListResponse)
+async def get_hot_news_trending(limit: int = Query(20, ge=1, le=100)):
+    """获取热门趋势资讯（按热度排序）"""
+    try:
+        return data_service.get_hot_news_trending(limit=limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hot-news/recent", response_model=HotNewsListResponse)
+async def get_hot_news_recent(
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(20, ge=1, le=100)
+):
+    """获取最近发布的热点资讯"""
+    try:
+        return data_service.get_hot_news_recent(hours=hours, limit=limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hot-news/by-major/{major}", response_model=HotNewsListResponse)
+async def get_hot_news_by_major(major: str, limit: int = Query(10, ge=1, le=50)):
+    """获取指定专业的热点资讯"""
+    try:
+        return data_service.get_hot_news_by_major(major=major, limit=limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hot-news/by-category/{category}", response_model=HotNewsListResponse)
+async def get_hot_news_by_category(category: str, limit: int = Query(10, ge=1, le=50)):
+    """获取指定分类的热点资讯"""
+    try:
+        return data_service.get_hot_news_by_category(category=category, limit=limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

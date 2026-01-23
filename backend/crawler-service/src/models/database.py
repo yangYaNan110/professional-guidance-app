@@ -344,3 +344,47 @@ class CrawlQuotaListResponse(BaseModel):
     """爬取配额列表响应"""
     data: List[CrawlQuota]
     total: int
+
+
+# =====================================================
+# 热点资讯模型
+# =====================================================
+
+class HotNewsBase(BaseModel):
+    """热点资讯基础模型"""
+    title: str = Field(..., description="资讯标题", max_length=500)
+    summary: Optional[str] = Field(None, description="资讯摘要")
+    source: str = Field(..., description="来源平台", max_length=100)
+    source_url: Optional[str] = Field(None, description="原文链接", max_length=1000)
+    publish_time: Optional[datetime] = Field(None, description="发布时间")
+    related_major: Optional[str] = Field(None, description="相关专业", max_length=200)
+    category: Optional[str] = Field(None, description="资讯分类", max_length=100)
+    view_count: int = Field(default=0, ge=0, description="浏览量")
+    heat_index: float = Field(default=0.0, ge=0, le=100, description="热度指数")
+
+
+class HotNews(HotNewsBase):
+    """热点资讯完整模型"""
+    id: int
+    crawled_at: datetime
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class HotNewsListResponse(BaseModel):
+    """热点资讯列表响应"""
+    data: List[HotNews]
+    total: int
+    page: int
+    page_size: int
+
+
+class HotNewsByMajorResponse(BaseModel):
+    """按专业分类的热点资讯响应"""
+    major: str
+    news_count: int
+    news: List[HotNews]
+

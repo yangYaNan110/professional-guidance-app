@@ -272,3 +272,67 @@ export async function getCrawlQuotas(): Promise<CrawlQuotaListResponse> {
   }
   return response.json();
 }
+
+// =====================================================
+// 热点资讯API
+// =====================================================
+
+export async function getHotNews(params: HotNewsQueryParams = {}): Promise<HotNewsListResponse> {
+  const queryParams = new URLSearchParams();
+  if (params.category !== undefined) {
+    queryParams.append('category', params.category);
+  }
+  if (params.related_major !== undefined) {
+    queryParams.append('related_major', params.related_major);
+  }
+  if (params.source !== undefined) {
+    queryParams.append('source', params.source);
+  }
+  if (params.page !== undefined) {
+    queryParams.append('page', params.page.toString());
+  }
+  if (params.page_size !== undefined) {
+    queryParams.append('page_size', params.page_size.toString());
+  }
+  if (params.order_by !== undefined) {
+    queryParams.append('order_by', params.order_by);
+  }
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  const response = await fetch(`${API_BASE}/api/v1/data/hot-news${query}`);
+  if (!response.ok) {
+    throw new Error('获取热点资讯失败');
+  }
+  return response.json();
+}
+
+export async function getHotNewsTrending(limit: number = 20): Promise<HotNewsListResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/data/hot-news/trending?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('获取热门资讯失败');
+  }
+  return response.json();
+}
+
+export async function getHotNewsRecent(hours: number = 24, limit: number = 20): Promise<HotNewsListResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/data/hot-news/recent?hours=${hours}&limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('获取最近资讯失败');
+  }
+  return response.json();
+}
+
+export async function getHotNewsByMajor(major: string, limit: number = 10): Promise<HotNewsListResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/data/hot-news/by-major/${encodeURIComponent(major)}?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('获取专业资讯失败');
+  }
+  return response.json();
+}
+
+export async function getHotNewsByCategory(category: string, limit: number = 10): Promise<HotNewsListResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/data/hot-news/by-category/${encodeURIComponent(category)}?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('获取分类资讯失败');
+  }
+  return response.json();
+}

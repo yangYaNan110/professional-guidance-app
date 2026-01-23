@@ -304,3 +304,39 @@ export interface CrawlHistoryQueryParams {
   page?: number;
   page_size?: number;
 }
+
+// =====================================================
+// 热点资讯类型
+// =====================================================
+
+export interface HotNews {
+  id: number;
+  title: string;
+  summary?: string;
+  source: string;
+  source_url?: string;
+  publish_time?: string;
+  related_major?: string;
+  category?: string;
+  view_count: number;
+  heat_index: number;
+  crawled_at: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface HotNewsListResponse {
+  data: HotNews[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface HotNewsQueryParams {
+  category?: string;
+  related_major?: string;
+  source?: string;
+  page?: number;
+  page_size?: number;
+  order_by?: 'heat_index' | 'publish_time';
+}
