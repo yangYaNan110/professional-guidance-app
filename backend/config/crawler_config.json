@@ -1,0 +1,161 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-23T12:00:00Z",
+  "force_re_crawl_on_startup": false,
+  "data_sources": {
+    "major_categories": {
+      "description": "学科分类数据，包含所有学科门类信息",
+      "table_name": "major_categories",
+      "update_cycle_hours": 720,
+      "priority": 1,
+      "enabled": true,
+      "crawl_strategy": "incremental",
+      "fields": ["id", "name", "code", "parent_id", "sort_order", "description"],
+      "data_source": "阳光高考",
+      "cache_ttl_hours": 24
+    },
+    "majors": {
+      "description": "专业信息数据，包含专业名称、学科门类、就业率、薪资等",
+      "table_name": "majors",
+      "update_cycle_hours": 72,
+      "priority": 2,
+      "enabled": true,
+      "crawl_strategy": "quota_based",
+      "fields": ["id", "name", "category_id", "category_name", "description", "core_courses", "employment_rate", "avg_salary", "heat_index"],
+      "data_source": "阳光高考、中国教育在线",
+      "cache_ttl_hours": 12,
+      "quota": {
+        "total_limit": 10000,
+        "per_category": {
+          "工学": 100,
+          "理学": 80,
+          "经济学": 80,
+          "管理学": 70,
+          "医学": 60,
+          "法学": 60,
+          "文学": 50,
+          "教育学": 50,
+          "艺术学": 40,
+          "哲学": 30,
+          "历史学": 30,
+          "农学": 30,
+          "军事学": 20
+        }
+      }
+    },
+    "major_market_data": {
+      "description": "专业行情数据，包含就业率、薪资、录取分数线等实时数据",
+      "table_name": "major_market_data",
+      "update_cycle_hours": 72,
+      "priority": 3,
+      "enabled": true,
+      "crawl_strategy": "quota_based",
+      "fields": ["id", "title", "major_name", "category", "source_url", "source_website", "employment_rate", "avg_salary", "admission_score", "heat_index", "trend_data", "description", "courses", "career_prospects"],
+      "data_source": "阳光高考、麦可思就业报告",
+      "cache_ttl_hours": 12
+    },
+    "universities": {
+      "description": "大学信息数据，包含大学名称、层次、所在省市等",
+      "table_name": "universities",
+      "update_cycle_hours": 168,
+      "priority": 4,
+      "enabled": true,
+      "crawl_strategy": "incremental",
+      "fields": ["id", "name", "level", "province", "city", "employment_rate", "type", "location", "founded_year", "website", "description", "major_strengths"],
+      "data_source": "阳光高考、各高校官网",
+      "cache_ttl_hours": 24,
+      "coverage_requirement": {
+        "total_min_count": 100,
+        "min_per_province": {
+          "北京": 10,
+          "上海": 8,
+          "江苏": 6,
+          "浙江": 4,
+          "广东": 4,
+          "其他省份": 3
+        }
+      }
+    },
+    "university_admission_scores": {
+      "description": "大学录取分数数据，包含各省份各专业的录取分数线",
+      "table_name": "university_admission_scores",
+      "update_cycle_hours": 168,
+      "priority": 5,
+      "enabled": true,
+      "crawl_strategy": "yearly",
+      "fields": ["id", "university_id", "major_id", "province", "year", "min_score", "max_score", "avg_score", "batch", "enrollment_count"],
+      "data_source": "阳光高考",
+      "cache_ttl_hours": 24
+    },
+    "industry_trends": {
+      "description": "行业趋势数据，包含行业发展动态、薪资变化、人才需求等",
+      "table_name": "industry_trends",
+      "update_cycle_hours": 24,
+      "priority": 6,
+      "enabled": true,
+      "crawl_strategy": "daily",
+      "fields": ["id", "industry_name", "trend_type", "trend_data", "salary_range", "demand_index", "growth_rate", "hot_keywords"],
+      "data_source": "BOSS直聘、智联招聘、行业报告",
+      "cache_ttl_hours": 12
+    },
+    "video_content": {
+      "description": "视频内容数据，包含专业介绍视频、院校介绍视频等",
+      "table_name": "video_content",
+      "update_cycle_hours": 168,
+      "priority": 7,
+      "enabled": true,
+      "crawl_strategy": "weekly",
+      "fields": ["id", "title", "platform", "video_url", "bvid", "duration", "view_count", "published_at", "related_major", "summary", "key_points"],
+      "data_source": "B站、YouTube",
+      "cache_ttl_hours": 24
+    },
+    "crawl_history": {
+      "description": "爬取历史记录，用于追踪爬取任务执行情况",
+      "table_name": "crawl_history",
+      "update_cycle_hours": 1,
+      "priority": 8,
+      "enabled": true,
+      "crawl_strategy": "none",
+      "fields": ["id", "task_id", "task_type", "start_time", "end_time", "status", "crawled_count", "success_count", "failed_count", "error_message", "crawl_mode"],
+      "data_source": "系统生成",
+      "cache_ttl_hours": 1
+    },
+    "crawl_quota": {
+      "description": "爬取配额数据，用于控制各学科数据爬取量",
+      "table_name": "crawl_quota",
+      "update_cycle_hours": 72,
+      "priority": 9,
+      "enabled": true,
+      "crawl_strategy": "none",
+      "fields": ["id", "category_name", "quota", "used", "priority", "last_reset_at"],
+      "data_source": "系统生成",
+      "cache_ttl_hours": 1
+    }
+  },
+  "scheduler": {
+    "check_interval_seconds": 3600,
+    "default_timezone": "Asia/Shanghai",
+    "task_execution_window": {
+      "start": "02:00",
+      "end": "06:00"
+    }
+  },
+  "cache": {
+    "enabled": true,
+    "redis_host": "localhost",
+    "redis_port": 6379,
+    "default_ttl_hours": 12,
+    "invalidate_on_crawl_complete": true
+  },
+  "crawler": {
+    "default_request_delay_seconds": 2,
+    "max_concurrent_requests": 5,
+    "retry_on_failure": true,
+    "max_retries": 3,
+    "timeout_seconds": 30
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

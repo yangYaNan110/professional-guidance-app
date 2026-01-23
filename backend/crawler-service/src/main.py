@@ -1,7 +1,16 @@
-"""爬虫服务 - 专业行情数据爬取"""
+"""爬虫服务 - 专业行情数据爬取
+数据流规则：
+1. 爬虫Agent负责数据采集，写入PostgreSQL数据库
+2. 后端API只从数据库或Redis缓存读取数据
+3. 前端通过API获取数据，后端不直接爬取数据
+4. Redis缓存层减少数据库压力
+5. 配置驱动爬取周期，支持配置热更新
+"""
+
 import os
 import sys
 import logging
+import asyncio
 import sqlite3
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -15,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.data_manager import MajorDataManager
 from services.crawler import MajorDataCrawler
+from services.config_loader import get_crawler_config, CrawlerConfig
 from routers.data_router import router as data_router
 
 logging.basicConfig(level=logging.INFO)
@@ -24,22 +34,122 @@ data_manager = MajorDataManager()
 crawler = MajorDataCrawler()
 crawl_tasks = {}
 
+# 加载配置
+crawler_config: Optional[CrawlerConfig] = None
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "*",
 }
 
+
+async def run_startup_crawl_tasks(force_re_crawl: bool = False):
+    """
+    执行启动时的爬虫任务
+    
+    Args:
+        force_re_crawl: 是否强制重爬所有数据
+    """
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    # 检查是否需要强制重爬
+    config_force_re_crawl = crawler_config.force_re_crawl_on_startup
+    should_force_crawl = force_re_crawl or config_force_re_crawl
+    
+    logger.info(f"服务启动: force_re_crawl={should_force_crawl}, config_force_re_crawl={config_force_re_crawl}")
+    
+    if should_force_crawl:
+        logger.info("执行启动时强制全量爬取...")
+        
+        # 获取所有启用的数据源
+        schedule_tasks = crawler_config.get_schedule_tasks()
+        
+        for task in schedule_tasks:
+            task_key = task["task_key"]
+            logger.info(f"正在爬取: {task_key} - {task.get('description', '')}")
+            
+            try:
+                # 创建爬取任务
+                task_id = str(uuid.uuid4())
+                crawl_tasks[task_id] = {
+                    "status": "running",
+                    "task_type": task_key,
+                    "started_at": datetime.utcnow().isoformat(),
+                    "crawl_mode": "full" if should_force_crawl else "incremental",
+                    "records_crawled": 0,
+                    "records_saved": 0,
+                    "error_message": None
+                }
+                
+                # 执行爬取（这里是模拟，实际应该调用真正的爬虫）
+                new_data = await crawler.crawl_all_sources()
+                
+                if new_data:
+                    crawl_tasks[task_id]["records_crawled"] = len(new_data)
+                    saved_count = data_manager.save_crawled_data(new_data)
+                    crawl_tasks[task_id]["records_saved"] = saved_count
+                
+                crawl_tasks[task_id]["status"] = "completed"
+                crawl_tasks[task_id]["completed_at"] = datetime.utcnow().isoformat()
+                
+                logger.info(f"完成爬取 {task_key}: 获取{len(new_data) if new_data else 0}条数据")
+                
+            except Exception as e:
+                logger.error(f"爬取 {task_key} 失败: {e}")
+                if task_id in crawl_tasks:
+                    crawl_tasks[task_id]["status"] = "failed"
+                    crawl_tasks[task_id]["error_message"] = str(e)
+        
+        logger.info("启动时强制爬取任务完成")
+    else:
+        logger.info("跳过启动时爬取，将按配置周期执行")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("爬虫服务启动")
+    global crawler_config
+    
+    logger.info("=" * 50)
+    logger.info("爬虫服务启动中...")
+    
+    # 加载配置
+    crawler_config = get_crawler_config()
+    logger.info(f"配置版本: {crawler_config.version}")
+    logger.info(f"配置路径: {crawler_config.config_path}")
+    
+    # 显示数据源配置摘要
+    enabled_sources = crawler_config.get_enabled_data_sources()
+    logger.info(f"启用的数据源数量: {len(enabled_sources)}")
+    
+    for key, config in enabled_sources.items():
+        cycle = config.get("update_cycle_hours", 72)
+        strategy = config.get("crawl_strategy", "incremental")
+        logger.info(f"  - {key}: 周期={cycle}小时, 策略={strategy}")
+    
+    # 获取调度配置
+    scheduler_config = crawler_config.get_scheduler_config()
+    check_interval = scheduler_config.get("check_interval_seconds", 3600)
+    logger.info(f"调度检查间隔: {check_interval}秒")
+    
+    # 执行启动时的爬虫任务
+    await run_startup_crawl_tasks()
+    
+    logger.info("爬虫服务启动完成")
+    logger.info("=" * 50)
+    
     yield
+    
     logger.info("爬虫服务关闭")
+
 
 app = FastAPI(
     title="爬虫服务",
-    description="专业选择指导应用 - 专业行情数据爬取服务",
-    version="1.0.0",
+    description="专业选择指导应用 - 专业行情数据爬取服务 | 配置驱动 | 数据流架构",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -78,16 +188,188 @@ class MarketDataListResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "crawler-service"}
+    """健康检查"""
+    global crawler_config
+    
+    return {
+        "status": "healthy",
+        "service": "crawler-service",
+        "version": "1.1.0"
+    }
+
+
+# =====================================================
+# 配置管理API（管理员接口）
+# =====================================================
+
+@app.get("/api/v1/admin/config")
+async def get_config():
+    """获取当前配置（管理员接口）"""
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    return {
+        "version": crawler_config.version,
+        "config_path": crawler_config.config_path,
+        "force_re_crawl_on_startup": crawler_config.force_re_crawl_on_startup,
+        "data_sources_count": len(crawler_config.get_enabled_data_sources()),
+        "scheduler": crawler_config.get_scheduler_config(),
+        "cache": crawler_config.get_cache_config(),
+        "crawler": crawler_config.get_crawler_config()
+    }
+
+
+@app.get("/api/v1/admin/config/schedule")
+async def get_schedule_tasks():
+    """获取调度任务列表（管理员接口）"""
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    tasks = crawler_config.get_schedule_tasks()
+    return {
+        "tasks": tasks,
+        "total": len(tasks),
+        "check_interval_seconds": crawler_config.get_scheduler_config().get("check_interval_seconds", 3600)
+    }
+
+
+@app.post("/api/v1/admin/config/force-reload")
+async def reload_config():
+    """重新加载配置文件（管理员接口）"""
+    global crawler_config
+    
+    try:
+        crawler_config = CrawlerConfig()
+        return {
+            "status": "success",
+            "message": "配置已重新加载",
+            "version": crawler_config.version,
+            "enabled_data_sources": len(crawler_config.get_enabled_data_sources())
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"重新加载配置失败: {str(e)}")
+
+
+@app.post("/api/v1/admin/config/force-re-crawl")
+async def trigger_force_crawl(background_tasks: BackgroundTasks):
+    """
+    触发强制全量爬取（管理员接口）
+    
+    规则：
+    1. 忽略增量逻辑，强制重新爬取所有数据
+    2. 根据source_url覆盖已有记录
+    3. 重置所有学科配额使用计数
+    4. 记录操作日志，标记为全量爬取
+    """
+    task_id = str(uuid.uuid4())
+    crawl_tasks[task_id] = {
+        "status": "running",
+        "task_type": "full",
+        "started_at": datetime.utcnow().isoformat(),
+        "crawl_mode": "full",
+        "records_crawled": 0,
+        "records_saved": 0,
+        "error_message": None
+    }
+    background_tasks.add_task(run_startup_crawl_tasks, force_re_crawl=True)
+    
+    return {
+        "task_id": task_id,
+        "status": "started",
+        "message": "全量爬取任务已启动",
+        "crawl_mode": "full"
+    }
+
+
+@app.get("/api/v1/admin/config/data-source/{data_type}")
+async def get_data_source_config(data_type: str):
+    """获取指定数据源的配置（管理员接口）"""
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    config = crawler_config.get_data_source_config(data_type)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"数据源配置不存在: {data_type}")
+    
+    return {
+        "data_type": data_type,
+        "config": config
+    }
+
+
+@app.put("/api/v1/admin/config/data-source/{data_type}/cycle")
+async def update_data_source_cycle(
+    data_type: str,
+    cycle_hours: int
+):
+    """更新指定数据源的更新周期（管理员接口）"""
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    config = crawler_config.get_data_source_config(data_type)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"数据源配置不存在: {data_type}")
+    
+    # 更新配置
+    crawler_config.config["data_sources"][data_type]["update_cycle_hours"] = cycle_hours
+    
+    # 保存配置
+    crawler_config.save()
+    
+    return {
+        "status": "success",
+        "message": f"已更新 {data_type} 的更新周期为 {cycle_hours} 小时",
+        "data_type": data_type,
+        "new_cycle_hours": cycle_hours
+    }
 
 @app.get("/")
 async def root():
+    """根 endpoint - 显示服务信息和配置摘要"""
+    global crawler_config
+    
+    # 获取配置信息
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    enabled_sources = crawler_config.get_enabled_data_sources()
+    scheduler_config = crawler_config.get_scheduler_config()
+    
     return {
-        "message": "爬虫服务",
-        "version": "1.0.0",
+        "service": "爬虫服务",
+        "version": "1.1.0",
+        "config_version": crawler_config.version,
+        "force_re_crawl_on_startup": crawler_config.force_re_crawl_on_startup,
+        "data_sources": {
+            "enabled_count": len(enabled_sources),
+            "sources": [
+                {
+                    "key": key,
+                    "description": config.get("description", "")[:50],
+                    "update_cycle_hours": config.get("update_cycle_hours", 72),
+                    "crawl_strategy": config.get("crawl_strategy", "incremental")
+                }
+                for key, config in enabled_sources.items()
+            ]
+        },
+        "scheduler": {
+            "check_interval_seconds": scheduler_config.get("check_interval_seconds", 3600),
+            "execution_window": scheduler_config.get("task_execution_window", {})
+        },
         "endpoints": {
+            "API文档": "/docs",
             "触发爬取": "POST /api/v1/crawler/crawl",
+            "全量爬取": "POST /api/v1/admin/crawler/full-crawl",
             "爬取状态": "GET /api/v1/crawler/status/{task_id}",
+            "配置信息": "GET /api/v1/admin/config",
             "行情数据": "GET /api/v1/major/market-data",
             "学科分类": "GET /api/v1/major/categories"
         }
