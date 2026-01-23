@@ -161,6 +161,7 @@ const MajorDetailPage: React.FC = () => {
   // 监听切换到推荐大学选项卡，首次进入显示弹窗
   useEffect(() => {
     if (activeTab === 'universities') {
+      // 如果没有设置目标，显示设置弹窗
       const savedTarget = localStorage.getItem('userTarget');
       const hasSeen = localStorage.getItem('hasSeenTargetModal');
       
@@ -169,8 +170,28 @@ const MajorDetailPage: React.FC = () => {
         setHasSeenTargetModal(true);
         localStorage.setItem('hasSeenTargetModal', 'true');
       }
+
+      // 如果大学数据为空，且专业已加载，则获取全国推荐大学
+      if (universities.length === 0 && major?.major_name) {
+        fetchUniversitiesWithoutTarget();
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, major, universities]);
+
+  // 获取推荐大学数据（无目标时获取全国推荐）
+  const fetchUniversitiesWithoutTarget = async () => {
+    if (!major?.major_name) return;
+    
+    try {
+      const uniResponse = await fetch(`${API_BASE}/api/v1/universities/recommend?major=${encodeURIComponent(major.major_name)}`);
+      if (uniResponse.ok) {
+        const uniData = await uniResponse.json();
+        setUniversities(uniData.universities || []);
+      }
+    } catch (err) {
+      console.error('获取推荐大学失败:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchMajorIntro = async () => {
