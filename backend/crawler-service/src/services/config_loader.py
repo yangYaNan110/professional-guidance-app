@@ -103,6 +103,198 @@ class CrawlerConfig:
         """
         return self.config.get("data_sources", {}).get(data_type)
     
+    def get_data_sources_list(self, data_type: str) -> List[str]:
+        """
+        获取指定数据类型的数据源列表（从数组格式读取）
+        
+        Args:
+            data_type: 数据类型
+            
+        Returns:
+            数据源列表
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            data_source = config.get("data_source", [])
+            if isinstance(data_source, list):
+                return data_source
+            elif isinstance(data_source, str):
+                return [s.strip() for s in data_source.split(",") if s.strip()]
+        return []
+    
+    def get_quota_dict(self, data_type: str) -> Dict[str, int]:
+        """
+        获取指定数据类型的配额字典（从数组格式转换为字典）
+        
+        Args:
+            data_type: 数据类型
+            
+        Returns:
+            配额字典 {category: quota}
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            quota = config.get("quota", {})
+            per_category = quota.get("per_category", [])
+            
+            if isinstance(per_category, list):
+                # 新格式：数组
+                return {item.get("category", ""): item.get("quota", 0) for item in per_category}
+            elif isinstance(per_category, dict):
+                # 旧格式：对象（兼容）
+                return per_category
+        return {}
+    
+    def get_coverage_dict(self, data_type: str) -> Dict[str, int]:
+        """
+        获取指定数据类型的覆盖要求字典（从数组格式转换为字典）
+        
+        Args:
+            data_type: 数据类型
+            
+        Returns:
+            覆盖要求字典 {province: min_count}
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            coverage = config.get("coverage_requirement", {})
+            min_per_province = coverage.get("min_per_province", [])
+            
+            if isinstance(min_per_province, list):
+                # 新格式：数组
+                return {item.get("province", ""): item.get("min_count", 0) for item in min_per_province}
+            elif isinstance(min_per_province, dict):
+                # 旧格式：对象（兼容）
+                return min_per_province
+        return {}
+    
+    def get_quota_as_list(self, data_type: str) -> List[Dict[str, Any]]:
+        """
+        获取指定数据类型的配额列表（用于编辑）
+        
+        Args:
+            data_type: 数据类型
+            
+        Returns:
+            配额列表
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            quota = config.get("quota", {})
+            per_category = quota.get("per_category", [])
+            
+            if isinstance(per_category, list):
+                return per_category
+            elif isinstance(per_category, dict):
+                # 旧格式转换为新格式
+                return [
+                    {"category": k, "quota": v, "priority": 5}
+                    for k, v in per_category.items()
+                ]
+        return []
+    
+    def get_coverage_as_list(self, data_type: str) -> List[Dict[str, Any]]:
+        """
+        获取指定数据类型的覆盖要求列表（用于编辑）
+        
+        Args:
+            data_type: 数据类型
+            
+        Returns:
+            覆盖要求列表
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            coverage = config.get("coverage_requirement", {})
+            min_per_province = coverage.get("min_per_province", [])
+            
+            if isinstance(min_per_province, list):
+                return min_per_province
+            elif isinstance(min_per_province, dict):
+                # 旧格式转换为新格式
+                return [
+                    {"province": k, "min_count": v}
+                    for k, v in min_per_province.items()
+                ]
+        return []
+    
+    def update_data_sources(self, data_type: str, sources: List[str]) -> bool:
+        """
+        更新指定数据类型的数据源列表
+        
+        Args:
+            data_type: 数据类型
+            sources: 新的数据源列表
+            
+        Returns:
+            是否更新成功
+        """
+        if data_type in self.config.get("data_sources", {}):
+            self.config["data_sources"][data_type]["data_source"] = sources
+            return True
+        return False
+    
+    def add_quota_item(self, data_type: str, category: str, quota: int, priority: int = 5) -> bool:
+        """
+        添加配额项
+        
+        Args:
+            data_type: 数据类型
+            category: 学科类别
+            quota: 配额
+            priority: 优先级
+            
+        Returns:
+            是否添加成功
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            if "quota" not in config:
+                config["quota"] = {}
+            if "per_category" not in config["quota"]:
+                config["quota"]["per_category"] = []
+            
+            # 检查是否已存在
+            per_category = config["quota"]["per_category"]
+            for item in per_category:
+                if item.get("category") == category:
+                    item["quota"] = quota
+                    item["priority"] = priority
+                    return True
+            
+            # 添加新项
+            per_category.append({
+                "category": category,
+                "quota": quota,
+                "priority": priority
+            })
+            return True
+        return False
+    
+    def remove_quota_item(self, data_type: str, category: str) -> bool:
+        """
+        移除配额项
+        
+        Args:
+            data_type: 数据类型
+            category: 学科类别
+            
+        Returns:
+            是否移除成功
+        """
+        config = self.get_data_source_config(data_type)
+        if config:
+            quota = config.get("quota", {})
+            per_category = quota.get("per_category", [])
+            
+            if isinstance(per_category, list):
+                config["quota"]["per_category"] = [
+                    item for item in per_category
+                    if item.get("category") != category
+                ]
+                return True
+        return False
+    
     def get_all_data_sources(self) -> Dict[str, Dict[str, Any]]:
         """获取所有数据源配置"""
         return self.config.get("data_sources", {})

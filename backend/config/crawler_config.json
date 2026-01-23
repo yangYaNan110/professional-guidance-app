@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "last_updated": "2026-01-23T12:00:00Z",
+  "version": "1.1.0",
+  "last_updated": "2026-01-23T18:00:00Z",
   "force_re_crawl_on_startup": false,
   "data_sources": {
     "major_categories": {
@@ -11,7 +11,7 @@
       "enabled": true,
       "crawl_strategy": "incremental",
       "fields": ["id", "name", "code", "parent_id", "sort_order", "description"],
-      "data_source": "阳光高考",
+      "data_source": ["阳光高考"],
       "cache_ttl_hours": 24
     },
     "majors": {
@@ -22,25 +22,25 @@
       "enabled": true,
       "crawl_strategy": "quota_based",
       "fields": ["id", "name", "category_id", "category_name", "description", "core_courses", "employment_rate", "avg_salary", "heat_index"],
-      "data_source": "阳光高考、中国教育在线",
+      "data_source": ["阳光高考", "中国教育在线"],
       "cache_ttl_hours": 12,
       "quota": {
         "total_limit": 10000,
-        "per_category": {
-          "工学": 100,
-          "理学": 80,
-          "经济学": 80,
-          "管理学": 70,
-          "医学": 60,
-          "法学": 60,
-          "文学": 50,
-          "教育学": 50,
-          "艺术学": 40,
-          "哲学": 30,
-          "历史学": 30,
-          "农学": 30,
-          "军事学": 20
-        }
+        "per_category": [
+          {"category": "工学", "quota": 100, "priority": 10},
+          {"category": "理学", "quota": 80, "priority": 9},
+          {"category": "经济学", "quota": 80, "priority": 9},
+          {"category": "管理学", "quota": 70, "priority": 8},
+          {"category": "医学", "quota": 60, "priority": 7},
+          {"category": "法学", "quota": 60, "priority": 7},
+          {"category": "文学", "quota": 50, "priority": 6},
+          {"category": "教育学", "quota": 50, "priority": 6},
+          {"category": "艺术学", "quota": 40, "priority": 5},
+          {"category": "哲学", "quota": 30, "priority": 4},
+          {"category": "历史学", "quota": 30, "priority": 4},
+          {"category": "农学", "quota": 30, "priority": 4},
+          {"category": "军事学", "quota": 20, "priority": 3}
+        ]
       }
     },
     "major_market_data": {
@@ -51,7 +51,7 @@
       "enabled": true,
       "crawl_strategy": "quota_based",
       "fields": ["id", "title", "major_name", "category", "source_url", "source_website", "employment_rate", "avg_salary", "admission_score", "heat_index", "trend_data", "description", "courses", "career_prospects"],
-      "data_source": "阳光高考、麦可思就业报告",
+      "data_source": ["阳光高考", "麦可思就业报告"],
       "cache_ttl_hours": 12
     },
     "universities": {
@@ -62,18 +62,18 @@
       "enabled": true,
       "crawl_strategy": "incremental",
       "fields": ["id", "name", "level", "province", "city", "employment_rate", "type", "location", "founded_year", "website", "description", "major_strengths"],
-      "data_source": "阳光高考、各高校官网",
+      "data_source": ["阳光高考", "各高校官网"],
       "cache_ttl_hours": 24,
       "coverage_requirement": {
         "total_min_count": 100,
-        "min_per_province": {
-          "北京": 10,
-          "上海": 8,
-          "江苏": 6,
-          "浙江": 4,
-          "广东": 4,
-          "其他省份": 3
-        }
+        "min_per_province": [
+          {"province": "北京", "min_count": 10},
+          {"province": "上海", "min_count": 8},
+          {"province": "江苏", "min_count": 6},
+          {"province": "浙江", "min_count": 4},
+          {"province": "广东", "min_count": 4},
+          {"province": "其他", "min_count": 3}
+        ]
       }
     },
     "university_admission_scores": {
@@ -84,7 +84,7 @@
       "enabled": true,
       "crawl_strategy": "yearly",
       "fields": ["id", "university_id", "major_id", "province", "year", "min_score", "max_score", "avg_score", "batch", "enrollment_count"],
-      "data_source": "阳光高考",
+      "data_source": ["阳光高考"],
       "cache_ttl_hours": 24
     },
     "industry_trends": {
@@ -95,40 +95,57 @@
       "enabled": true,
       "crawl_strategy": "daily",
       "fields": ["id", "industry_name", "trend_type", "trend_data", "salary_range", "demand_index", "growth_rate", "hot_keywords"],
-      "data_source": "BOSS直聘、智联招聘、行业报告",
+      "data_source": ["BOSS直聘", "智联招聘", "行业报告"],
       "cache_ttl_hours": 12
+    },
+    "hot_news": {
+      "description": "热点资讯数据，包含专业相关的最新新闻、动态、事件等",
+      "table_name": "hot_news",
+      "update_cycle_hours": 6,
+      "priority": 7,
+      "enabled": true,
+      "crawl_strategy": "hourly",
+      "fields": ["id", "title", "summary", "source", "source_url", "publish_time", "related_major", "category", "view_count", "heat_index"],
+      "data_source": ["知乎", "微博", "今日头条", "B站", "小红书"],
+      "cache_ttl_hours": 6,
+      "keywords": ["人工智能", "计算机科学", "医学", "法学", "金融", "新能源", "自动驾驶", "芯片"],
+      "filter_rules": {
+        "max_age_days": 180,
+        "min_heat_index": 50,
+        "exclude_keywords": ["广告", "推广", "兼职"]
+      }
     },
     "video_content": {
       "description": "视频内容数据，包含专业介绍视频、院校介绍视频等",
       "table_name": "video_content",
       "update_cycle_hours": 168,
-      "priority": 7,
+      "priority": 8,
       "enabled": true,
       "crawl_strategy": "weekly",
       "fields": ["id", "title", "platform", "video_url", "bvid", "duration", "view_count", "published_at", "related_major", "summary", "key_points"],
-      "data_source": "B站、YouTube",
+      "data_source": ["B站", "YouTube"],
       "cache_ttl_hours": 24
     },
     "crawl_history": {
       "description": "爬取历史记录，用于追踪爬取任务执行情况",
       "table_name": "crawl_history",
       "update_cycle_hours": 1,
-      "priority": 8,
+      "priority": 9,
       "enabled": true,
       "crawl_strategy": "none",
       "fields": ["id", "task_id", "task_type", "start_time", "end_time", "status", "crawled_count", "success_count", "failed_count", "error_message", "crawl_mode"],
-      "data_source": "系统生成",
+      "data_source": ["系统生成"],
       "cache_ttl_hours": 1
     },
     "crawl_quota": {
       "description": "爬取配额数据，用于控制各学科数据爬取量",
       "table_name": "crawl_quota",
       "update_cycle_hours": 72,
-      "priority": 9,
+      "priority": 10,
       "enabled": true,
       "crawl_strategy": "none",
       "fields": ["id", "category_name", "quota", "used", "priority", "last_reset_at"],
-      "data_source": "系统生成",
+      "data_source": ["系统生成"],
       "cache_ttl_hours": 1
     }
   },
