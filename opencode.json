@@ -101,6 +101,38 @@
         "skill": true
       }
     },
+    "db-expert": {
+      "description": "数据库专家Agent，负责数据库设计、结构优化、数据建模",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/db-expert.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
+    "prompt": {
+      "description": "提示引导Agent，负责识别数据建模场景并引导完成设计",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/prompt.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "skill": true
+      }
+    },
     "document-processor": {
       "description": "文档处理Agent，负责爬取、分析、总结文档内容，生成专业介绍",
       "mode": "subagent",
@@ -132,12 +164,24 @@
         "grep": true,
         "skill": true
       }
+    },
+    "doc-generator": {
+      "description": "文档生成Agent，负责分析项目数据需求并生成设计文档",
+      "mode": "subagent",
+      "model": "anthropic/claude-3-5-sonnet-20241022",
+      "temperature": 0.2,
+      "prompt": "{file:.opencode/agent/doc-generator.md}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "glob": true,
+        "grep": true,
+        "task": true,
+        "skill": true
+      }
     }
-  },
-  "skill": {
-    "enabled": true,
-    "directory": ".opencode/skill",
-    "auto_invoke": true
   },
   "tools": {
     "read": true,

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.data_manager import MajorDataManager
 from services.crawler import MajorDataCrawler
+from routers.data_router import router as data_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,6 +42,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# 包含数据API路由
+app.include_router(data_router)
 
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
@@ -678,6 +682,566 @@ class UniversityDataService:
                 ],
                 "major_strengths": ["建筑学", "土木工程", "城乡规划", "环境科学与工程", "车辆工程"]
             },
+            # ==================== 天津 ====================
+            {
+                "id": 301,
+                "name": "南开大学",
+                "level": "985/211",
+                "province": "天津",
+                "city": "天津",
+                "employment_rate": 96.5,
+                "type": "综合",
+                "location": "天津市南开区卫津路94号",
+                "founded_year": 1919,
+                "website": "https://www.nankai.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 650, "max_score": 668, "avg_score": 657.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 645, "max_score": 662, "avg_score": 652.3, "province": "天津", "batch": "本科一批"},
+                    {"year": 2022, "min_score": 638, "max_score": 655, "avg_score": 645.8, "province": "天津", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 640, "max_score": 658, "avg_score": 647.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["化学", "数学", "理论经济学", "中国史", "计算机科学与技术"]
+            },
+            {
+                "id": 302,
+                "name": "天津大学",
+                "level": "985/211",
+                "province": "天津",
+                "city": "天津",
+                "employment_rate": 96.2,
+                "type": "理工",
+                "location": "天津市南开区卫津路92号",
+                "founded_year": 1895,
+                "website": "https://www.tju.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 645, "max_score": 665, "avg_score": 653.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 638, "max_score": 658, "avg_score": 646.8, "province": "天津", "batch": "本科一批"},
+                    {"year": 2022, "min_score": 630, "max_score": 650, "avg_score": 638.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 635, "max_score": 655, "avg_score": 643.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["建筑学", "化学工程与技术", "土木工程", "精密仪器", "管理科学与工程"]
+            },
+            {
+                "id": 303,
+                "name": "天津医科大学",
+                "level": "211",
+                "province": "天津",
+                "city": "天津",
+                "employment_rate": 95.8,
+                "type": "医学",
+                "location": "天津市和平区气象台路22号",
+                "founded_year": 1951,
+                "website": "https://www.tmu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 620, "max_score": 640, "avg_score": 628.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 612, "max_score": 632, "avg_score": 620.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 605, "max_score": 625, "avg_score": 613.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["临床医学", "基础医学", "口腔医学", "公共卫生与预防医学"]
+            },
+            {
+                "id": 304,
+                "name": "天津师范大学",
+                "level": "双一流",
+                "province": "天津",
+                "city": "天津",
+                "employment_rate": 94.5,
+                "type": "师范",
+                "location": "天津市西青区宾水西道393号",
+                "founded_year": 1958,
+                "website": "https://www.tjn.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 580, "max_score": 600, "avg_score": 588.5, "province": "天津", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 572, "max_score": 592, "avg_score": 580.5, "province": "天津", "batch": "本科一批"},
+                ],
+                "major_strengths": ["教育学", "心理学", "中国语言文学", "新闻学"]
+            },
+            # ==================== 江苏 ====================
+            {
+                "id": 401,
+                "name": "东南大学",
+                "level": "985/211",
+                "province": "江苏",
+                "city": "南京",
+                "employment_rate": 96.8,
+                "type": "理工",
+                "location": "江苏省南京市玄武区四牌楼2号",
+                "founded_year": 1902,
+                "website": "https://www.seu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 652, "max_score": 670, "avg_score": 659.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 645, "max_score": 663, "avg_score": 652.3, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 645, "max_score": 663, "avg_score": 652.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["建筑学", "土木工程", "交通运输工程", "生物医学工程", "电子信息工程"]
+            },
+            {
+                "id": 402,
+                "name": "南京航空航天大学",
+                "level": "211",
+                "province": "江苏",
+                "city": "南京",
+                "employment_rate": 96.2,
+                "type": "理工",
+                "location": "江苏省南京市秦淮区御道街29号",
+                "founded_year": 1952,
+                "website": "https://www.nuaa.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 638, "max_score": 658, "avg_score": 646.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 630, "max_score": 650, "avg_score": 638.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 625, "max_score": 645, "avg_score": 633.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["航空航天工程", "计算机科学与技术", "机械工程", "自动化", "电气工程"]
+            },
+            {
+                "id": 403,
+                "name": "南京理工大学",
+                "level": "211",
+                "province": "江苏",
+                "city": "南京",
+                "employment_rate": 95.8,
+                "type": "理工",
+                "location": "江苏省南京市玄武区孝陵卫街200号",
+                "founded_year": 1949,
+                "website": "https://www.njust.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 630, "max_score": 648, "avg_score": 637.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 622, "max_score": 640, "avg_score": 629.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 618, "max_score": 636, "avg_score": 625.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["兵器科学与技术", "计算机科学与技术", "机械工程", "电子信息工程", "自动化"]
+            },
+            {
+                "id": 404,
+                "name": "苏州大学",
+                "level": "211",
+                "province": "江苏",
+                "city": "苏州",
+                "employment_rate": 95.2,
+                "type": "综合",
+                "location": "江苏省苏州市姑苏区干将东路333号",
+                "founded_year": 1900,
+                "website": "https://www.suda.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 610, "max_score": 630, "avg_score": 618.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 602, "max_score": 622, "avg_score": 610.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 598, "max_score": 618, "avg_score": 606.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["材料科学与工程", "纺织科学与工程", "软件工程", "临床医学", "法学"]
+            },
+            {
+                "id": 405,
+                "name": "河海大学",
+                "level": "211",
+                "province": "江苏",
+                "city": "南京",
+                "employment_rate": 94.8,
+                "type": "理工",
+                "location": "江苏省南京市鼓楼区西康路1号",
+                "founded_year": 1915,
+                "website": "https://www.hhu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 605, "max_score": 625, "avg_score": 613.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 598, "max_score": 618, "avg_score": 606.5, "province": "江苏", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 592, "max_score": 612, "avg_score": 600.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["水利工程", "土木工程", "环境科学与工程", "计算机科学与技术", "地质资源"]
+            },
+            # ==================== 浙江 ====================
+            {
+                "id": 501,
+                "name": "浙江大学",
+                "level": "985/211",
+                "province": "浙江",
+                "city": "杭州",
+                "employment_rate": 97.8,
+                "type": "综合",
+                "location": "浙江省杭州市西湖区余杭塘路866号",
+                "founded_year": 1897,
+                "website": "https://www.zju.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 668, "max_score": 685, "avg_score": 675.5, "province": "浙江", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 660, "max_score": 678, "avg_score": 667.5, "province": "浙江", "batch": "本科一批"},
+                ],
+                "major_strengths": ["计算机科学与技术", "软件工程", "农业工程", "临床医学", "电气工程"]
+            },
+            {
+                "id": 502,
+                "name": "浙江工业大学",
+                "level": "双一流",
+                "province": "浙江",
+                "city": "杭州",
+                "employment_rate": 94.5,
+                "type": "理工",
+                "location": "浙江省杭州市西湖区潮王路18号",
+                "founded_year": 1953,
+                "website": "https://www.zjut.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 605, "max_score": 625, "avg_score": 613.5, "province": "浙江", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 598, "max_score": 618, "avg_score": 606.5, "province": "浙江", "batch": "本科一批"},
+                ],
+                "major_strengths": ["化学工程与技术", "机械工程", "计算机科学与技术", "软件工程", "控制科学与工程"]
+            },
+            {
+                "id": 503,
+                "name": "杭州电子科技大学",
+                "level": "双一流",
+                "province": "浙江",
+                "city": "杭州",
+                "employment_rate": 95.2,
+                "type": "理工",
+                "location": "浙江省杭州市下沙高教园区",
+                "founded_year": 1956,
+                "website": "https://www.hdu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 615, "max_score": 635, "avg_score": 623.5, "province": "浙江", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 608, "max_score": 628, "avg_score": 616.5, "province": "浙江", "batch": "本科一批"},
+                ],
+                "major_strengths": ["计算机科学与技术", "电子信息工程", "软件工程", "自动化", "会计学"]
+            },
+            # ==================== 广东 ====================
+            {
+                "id": 601,
+                "name": "中山大学",
+                "level": "985/211",
+                "province": "广东",
+                "city": "广州",
+                "employment_rate": 96.5,
+                "type": "综合",
+                "location": "广东省广州市海珠区新港西路135号",
+                "founded_year": 1924,
+                "website": "https://www.sysu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 652, "max_score": 670, "avg_score": 659.5, "province": "广东", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 645, "max_score": 663, "avg_score": 652.3, "province": "广东", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 638, "max_score": 656, "avg_score": 645.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["临床医学", "生物学", "工商管理", "数学", "电子信息工程"]
+            },
+            {
+                "id": 602,
+                "name": "华南理工大学",
+                "level": "985/211",
+                "province": "广东",
+                "city": "广州",
+                "employment_rate": 96.2,
+                "type": "理工",
+                "location": "广东省广州市天河区五山路381号",
+                "founded_year": 1952,
+                "website": "https://www.scut.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 645, "max_score": 665, "avg_score": 653.5, "province": "广东", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 638, "max_score": 658, "avg_score": 646.5, "province": "广东", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 632, "max_score": 652, "avg_score": 640.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["建筑学", "轻工技术与工程", "材料科学与工程", "化学工程", "计算机科学与技术"]
+            },
+            {
+                "id": 603,
+                "name": "暨南大学",
+                "level": "211",
+                "province": "广东",
+                "city": "广州",
+                "employment_rate": 94.8,
+                "type": "综合",
+                "location": "广东省广州市天河区黄埔大道西601号",
+                "founded_year": 1906,
+                "website": "https://www.jnu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 610, "max_score": 630, "avg_score": 618.5, "province": "广东", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 602, "max_score": 622, "avg_score": 610.5, "province": "广东", "batch": "本科一批"},
+                ],
+                "major_strengths": ["新闻传播学", "中国语言文学", "生物学", "工商管理", "临床医学"]
+            },
+            # ==================== 湖北 ====================
+            {
+                "id": 701,
+                "name": "华中科技大学",
+                "level": "985/211",
+                "province": "湖北",
+                "city": "武汉",
+                "employment_rate": 96.8,
+                "type": "理工",
+                "location": "湖北省武汉市洪山区珞喻路1037号",
+                "founded_year": 1952,
+                "website": "https://www.hust.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 658, "max_score": 675, "avg_score": 665.5, "province": "湖北", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 650, "max_score": 668, "avg_score": 657.5, "province": "湖北", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 642, "max_score": 660, "avg_score": 649.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["计算机科学与技术", "电气工程", "机械工程", "临床医学", "光电信息工程"]
+            },
+            {
+                "id": 702,
+                "name": "武汉大学",
+                "level": "985/211",
+                "province": "湖北",
+                "city": "武汉",
+                "employment_rate": 96.5,
+                "type": "综合",
+                "location": "湖北省武汉市武昌区珞珈山",
+                "founded_year": 1893,
+                "website": "https://www.whu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 655, "max_score": 672, "avg_score": 662.5, "province": "湖北", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 648, "max_score": 665, "avg_score": 655.2, "province": "湖北", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 640, "max_score": 658, "avg_score": 647.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["法学", "测绘科学与技术", "图书馆情报学", "地球物理学", "计算机科学与技术"]
+            },
+            {
+                "id": 703,
+                "name": "中南财经政法大学",
+                "level": "211",
+                "province": "湖北",
+                "city": "武汉",
+                "employment_rate": 94.5,
+                "type": "综合",
+                "location": "湖北省武汉市东湖高新技术开发区南湖大道182号",
+                "founded_year": 1948,
+                "website": "https://www.zuel.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 615, "max_score": 635, "avg_score": 623.5, "province": "湖北", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 608, "max_score": 628, "avg_score": 616.5, "province": "湖北", "batch": "本科一批"},
+                ],
+                "major_strengths": ["法学", "经济学", "工商管理", "会计学", "金融学"]
+            },
+            # ==================== 陕西 ====================
+            {
+                "id": 801,
+                "name": "西安交通大学",
+                "level": "985/211",
+                "province": "陕西",
+                "city": "西安",
+                "employment_rate": 96.2,
+                "type": "理工",
+                "location": "陕西省西安市碑林区咸宁西路28号",
+                "founded_year": 1896,
+                "website": "https://www.xjtu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 650, "max_score": 668, "avg_score": 657.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 642, "max_score": 660, "avg_score": 649.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 635, "max_score": 653, "avg_score": 642.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["电气工程", "动力工程", "管理科学与工程", "机械工程", "计算机科学与技术"]
+            },
+            {
+                "id": 802,
+                "name": "西北工业大学",
+                "level": "985/211",
+                "province": "陕西",
+                "city": "西安",
+                "employment_rate": 95.8,
+                "type": "理工",
+                "location": "陕西省西安市友谊西路127号",
+                "founded_year": 1938,
+                "website": "https://www.nwpu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 640, "max_score": 658, "avg_score": 647.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 632, "max_score": 650, "avg_score": 639.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 625, "max_score": 643, "avg_score": 632.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["航空航天工程", "材料科学与工程", "计算机科学与技术", "机械工程", "控制科学与工程"]
+            },
+            {
+                "id": 803,
+                "name": "西安电子科技大学",
+                "level": "211",
+                "province": "陕西",
+                "city": "西安",
+                "employment_rate": 95.5,
+                "type": "理工",
+                "location": "陕西省西安市雁塔区太白南路2号",
+                "founded_year": 1931,
+                "website": "https://www.xidian.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 630, "max_score": 648, "avg_score": 637.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 622, "max_score": 640, "avg_score": 629.5, "province": "陕西", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 618, "max_score": 636, "avg_score": 625.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["电子信息工程", "计算机科学与技术", "通信工程", "微电子科学与工程", "网络空间安全"]
+            },
+            # ==================== 四川 ====================
+            {
+                "id": 901,
+                "name": "四川大学",
+                "level": "985/211",
+                "province": "四川",
+                "city": "成都",
+                "employment_rate": 95.8,
+                "type": "综合",
+                "location": "四川省成都市武侯区一环路南一段24号",
+                "founded_year": 1896,
+                "website": "https://www.scu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 640, "max_score": 658, "avg_score": 647.5, "province": "四川", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 632, "max_score": 650, "avg_score": 639.5, "province": "四川", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 625, "max_score": 643, "avg_score": 632.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["口腔医学", "临床医学", "数学", "中国语言文学", "工商管理"]
+            },
+            {
+                "id": 902,
+                "name": "电子科技大学",
+                "level": "985/211",
+                "province": "四川",
+                "city": "成都",
+                "employment_rate": 96.5,
+                "type": "理工",
+                "location": "四川省成都市高新区西区西源大道2006号",
+                "founded_year": 1956,
+                "website": "https://www.uestc.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 655, "max_score": 672, "avg_score": 662.5, "province": "四川", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 648, "max_score": 665, "avg_score": 655.2, "province": "四川", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 642, "max_score": 660, "avg_score": 649.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["电子信息工程", "计算机科学与技术", "通信工程", "微电子科学与工程", "自动化"]
+            },
+            # ==================== 其他省份 ====================
+            {
+                "id": 1001,
+                "name": "山东大学",
+                "level": "985/211",
+                "province": "山东",
+                "city": "济南",
+                "employment_rate": 95.2,
+                "type": "综合",
+                "location": "山东省济南市历城区山大南路27号",
+                "founded_year": 1901,
+                "website": "https://www.sdu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 635, "max_score": 653, "avg_score": 642.5, "province": "山东", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 628, "max_score": 646, "avg_score": 635.5, "province": "山东", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 620, "max_score": 638, "avg_score": 627.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["数学", "化学", "临床医学", "材料科学与工程", "中国语言文学"]
+            },
+            {
+                "id": 1002,
+                "name": "吉林大学",
+                "level": "985/211",
+                "province": "吉林",
+                "city": "长春",
+                "employment_rate": 94.5,
+                "type": "综合",
+                "location": "吉林省长春市朝阳区前进大街2699号",
+                "founded_year": 1946,
+                "website": "https://www.jlu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 615, "max_score": 633, "avg_score": 622.5, "province": "吉林", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 608, "max_score": 626, "avg_score": 615.5, "province": "吉林", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 605, "max_score": 623, "avg_score": 612.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["化学", "车辆工程", "法学", "临床医学", "数学"]
+            },
+            {
+                "id": 1003,
+                "name": "哈尔滨工业大学",
+                "level": "985/211",
+                "province": "黑龙江",
+                "city": "哈尔滨",
+                "employment_rate": 96.2,
+                "type": "理工",
+                "location": "黑龙江省哈尔滨市南岗区西大直街92号",
+                "founded_year": 1920,
+                "website": "https://www.hit.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 648, "max_score": 666, "avg_score": 655.5, "province": "黑龙江", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 640, "max_score": 658, "avg_score": 647.5, "province": "黑龙江", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 638, "max_score": 656, "avg_score": 645.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["计算机科学与技术", "航天航空工程", "机械工程", "控制科学与工程", "电气工程"]
+            },
+            {
+                "id": 1004,
+                "name": "厦门大学",
+                "level": "985/211",
+                "province": "福建",
+                "city": "厦门",
+                "employment_rate": 95.5,
+                "type": "综合",
+                "location": "福建省厦门市思明区思明南路422号",
+                "founded_year": 1921,
+                "website": "https://www.xmu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 645, "max_score": 663, "avg_score": 652.5, "province": "福建", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 638, "max_score": 656, "avg_score": 645.5, "province": "福建", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 632, "max_score": 650, "avg_score": 639.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["经济学", "化学", "海洋科学", "会计学", "统计学"]
+            },
+            {
+                "id": 1005,
+                "name": "重庆大学",
+                "level": "985/211",
+                "province": "重庆",
+                "city": "重庆",
+                "employment_rate": 94.8,
+                "type": "理工",
+                "location": "重庆市沙坪坝区沙正街174号",
+                "founded_year": 1929,
+                "website": "https://www.cqu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 625, "max_score": 643, "avg_score": 632.5, "province": "重庆", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 618, "max_score": 636, "avg_score": 625.5, "province": "重庆", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 612, "max_score": 630, "avg_score": 619.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["建筑学", "土木工程", "机械工程", "电气工程", "采矿工程"]
+            },
+            {
+                "id": 1006,
+                "name": "湖南大学",
+                "level": "985/211",
+                "province": "湖南",
+                "city": "长沙",
+                "employment_rate": 95.2,
+                "type": "综合",
+                "location": "湖南省长沙市岳麓区麓山南路",
+                "founded_year": 1903,
+                "website": "https://www.hnu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 635, "max_score": 653, "avg_score": 642.5, "province": "湖南", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 628, "max_score": 646, "avg_score": 635.5, "province": "湖南", "batch": "本科一批"},
+                    {"year": 2024, "min_score": 622, "max_score": 640, "avg_score": 629.5, "province": "山西", "batch": "本科一批"},
+                ],
+                "major_strengths": ["化学", "机械工程", "土木工程", "设计学", "工商管理"]
+            },
+            {
+                "id": 1007,
+                "name": "安徽大学",
+                "level": "211",
+                "province": "安徽",
+                "city": "合肥",
+                "employment_rate": 94.2,
+                "type": "综合",
+                "location": "安徽省合肥市蜀山区肥西路3号",
+                "founded_year": 1928,
+                "website": "https://www.ahu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 605, "max_score": 623, "avg_score": 612.5, "province": "安徽", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 598, "max_score": 616, "avg_score": 605.5, "province": "安徽", "batch": "本科一批"},
+                ],
+                "major_strengths": ["计算机科学与技术", "材料科学与工程", "汉语言文学", "英语", "法学"]
+            },
+            {
+                "id": 1008,
+                "name": "辽宁大学",
+                "level": "211",
+                "province": "辽宁",
+                "city": "沈阳",
+                "employment_rate": 93.8,
+                "type": "综合",
+                "location": "辽宁省沈阳市皇姑区崇山中路66号",
+                "founded_year": 1948,
+                "website": "https://www.lnu.edu.cn",
+                "admission_scores": [
+                    {"year": 2024, "min_score": 598, "max_score": 616, "avg_score": 605.5, "province": "辽宁", "batch": "本科一批"},
+                    {"year": 2023, "min_score": 590, "max_score": 608, "avg_score": 597.5, "province": "辽宁", "batch": "本科一批"},
+                ],
+                "major_strengths": ["经济学", "法学", "工商管理", "哲学", "中国语言文学"]
+            },
         ]
         
         return universities
@@ -748,7 +1312,15 @@ class UniversityDataService:
         major: str = None,
         limit: int = 10
     ) -> dict:
-        """获取推荐大学列表（根据用户目标，同时考虑分数和专业匹配）"""
+        """
+        获取推荐大学列表（根据用户目标）
+        
+        推荐规则（优先级从高到低）：
+        1. 省份+分数+专业：优先推荐该省符合分数和专业的大学 → 全国符合分数和专业的大学
+        2. 只有省份：优先推荐同省该专业大学 → 全国该专业大学
+        3. 只有分数：按分数匹配推荐（±30分范围）
+        4. 都没有：按专业推荐，知名度从高到低
+        """
         
         # 专业与大学王牌专业的映射
         major_to_strengths = {
@@ -826,124 +1398,245 @@ class UniversityDataService:
         result = []
         shown_ids = set()
         
-        # 1. 专业匹配+分数匹配（最高优先级）
-        if score and score > 0 and major and related_strengths:
+        # 获取某大学在指定省份的录取分数
+        def get_score_for_province(university, target_province):
+            if not university.get('admission_scores'):
+                return None
+            for s in university['admission_scores']:
+                if s['province'] == target_province:
+                    return s
+            return None
+        
+        # ==================== 场景1: 省份+分数+专业 ====================
+        if province and score and score > 0 and major and related_strengths:
+            # 1.1 该省符合分数和专业的大学
             group = []
             for u in self.universities:
-                scores = [s for s in u["admission_scores"] if s["province"] == province]
-                if scores:
-                    latest = scores[0]
-                    score_val = latest["min_score"]
-                    if score - 30 <= score_val <= score + 30:
-                        major_score = get_major_match_score(u)
-                        if major_score > 0:
-                            group.append({
-                                **u,
-                                "match_type": "professional",
-                                "match_reason": f"专业实力强，录取分{int(score_val)}分，与您分数({score}分)匹配",
-                                "latest_score": latest,
-                                "major_match_score": major_score
-                            })
+                if u["id"] in shown_ids:
+                    continue
+                major_score = get_major_match_score(u)
+                if major_score == 0:
+                    continue
+                
+                latest = get_score_for_province(u, province)
+                if not latest:
+                    continue
+                
+                score_val = latest["min_score"]
+                if score - 30 <= score_val <= score + 30:
+                    group.append({
+                        **u,
+                        "match_type": "score",
+                        "match_reason": f"本省{province}高校，录取分{int(score_val)}分，与您分数({score}分)匹配，{major}专业实力强",
+                        "latest_score": latest,
+                        "major_match_score": major_score
+                    })
             
             group.sort(key=lambda x: (x["major_match_score"], x["latest_score"]["min_score"]), reverse=True)
             result.extend(group[:5])
             shown_ids.update([u["id"] for u in group[:5]])
+            
+            # 1.2 全国符合分数和专业的大学（排除已显示的）
+            if len(group) < 5:
+                group2 = []
+                for u in self.universities:
+                    if u["id"] in shown_ids:
+                        continue
+                    major_score = get_major_match_score(u)
+                    if major_score == 0:
+                        continue
+                    
+                    # 获取任意省份的分数
+                    latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                    if not latest:
+                        continue
+                    
+                    score_val = latest["min_score"]
+                    if score - 30 <= score_val <= score + 30:
+                        group2.append({
+                            **u,
+                            "match_type": "score",
+                            "match_reason": f"录取分{int(score_val)}分，与您分数({score}分)匹配，{major}专业实力强",
+                            "latest_score": latest,
+                            "major_match_score": major_score
+                        })
+                
+                group2.sort(key=lambda x: (x["major_match_score"], x["latest_score"]["min_score"]), reverse=True)
+                group2 = group2[:(5 - len(group))]
+                result.extend(group2)
+                shown_ids.update([u["id"] for u in group2])
         
-        # 2. 专业匹配+同省（次优先级）
-        if major and related_strengths and province:
+        # ==================== 场景2: 只有省份 ====================
+        elif province and not score and major and related_strengths:
+            # 2.1 同省该专业大学（按专业匹配度+就业率排序）
             group = []
             for u in self.universities:
                 if u["id"] in shown_ids or u["province"] != province:
                     continue
                 major_score = get_major_match_score(u)
                 if major_score > 0:
-                    scores = [s for s in u["admission_scores"] if s["province"] == province]
-                    latest = scores[0] if scores else None
+                    latest = get_score_for_province(u, province)
                     group.append({
                         **u,
-                        "match_type": "province_major",
-                        "match_reason": f"本省高校，{major}专业实力较强",
+                        "match_type": "province",
+                        "match_reason": f"本省{province}高校，{major}专业实力较强",
                         "latest_score": latest,
                         "major_match_score": major_score
                     })
             
+            # 按专业匹配度和就业率排序
             group.sort(key=lambda x: (x["major_match_score"], x["employment_rate"]), reverse=True)
-            result.extend(group[:3])
-            shown_ids.update([u["id"] for u in group[:3]])
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
+            
+            # 2.2 全国该专业大学（排除已显示的）- 只有当本省没有足够大学时才补充
+            if len(group) < 5:
+                group2 = []
+                for u in self.universities:
+                    if u["id"] in shown_ids:
+                        continue
+                    major_score = get_major_match_score(u)
+                    if major_score > 0:
+                        latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                        group2.append({
+                            **u,
+                            "match_type": "national",
+                            "match_reason": f"{major}专业实力强，全国知名",
+                            "latest_score": latest,
+                            "major_match_score": major_score
+                        })
+                
+                group2.sort(key=lambda x: (x["major_match_score"], x["employment_rate"]), reverse=True)
+                group2 = group2[:(5 - len(group))]
+                result.extend(group2)
+                shown_ids.update([u["id"] for u in group2])
         
-        # 3. 专业匹配+全国（第三优先级）
-        if major and related_strengths:
+        # ==================== 场景3: 只有分数 ====================
+        elif score and score > 0 and not province and not major:
+            group = []
+            for u in self.universities:
+                if u["id"] in shown_ids:
+                    continue
+                # 获取任意省份的分数
+                latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                if not latest:
+                    continue
+                
+                score_val = latest["min_score"]
+                if score - 30 <= score_val <= score + 30:
+                    group.append({
+                        **u,
+                        "match_type": "score",
+                        "match_reason": f"录取分{int(score_val)}分，与您分数({score}分)接近",
+                        "latest_score": latest,
+                        "major_match_score": 0
+                    })
+            
+            group.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
+        
+        # ==================== 场景4: 都没有设置 ====================
+        elif not province and not score and major and related_strengths:
+            # 按专业推荐，知名度从高到低（就业率排序）
             group = []
             for u in self.universities:
                 if u["id"] in shown_ids:
                     continue
                 major_score = get_major_match_score(u)
                 if major_score > 0:
-                    scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
-                    latest = scores[0] if scores else None
+                    latest = u["admission_scores"][0] if u.get("admission_scores") else None
                     group.append({
                         **u,
-                        "match_type": "national_major",
-                        "match_reason": f"{major}专业实力强，全国知名",
+                        "match_type": "national",
+                        "match_reason": f"{major}专业实力强，{u['level']}高校，就业率{u['employment_rate']}%",
                         "latest_score": latest,
                         "major_match_score": major_score
                     })
             
+            # 按专业匹配度和就业率排序
             group.sort(key=lambda x: (x["major_match_score"], x["employment_rate"]), reverse=True)
-            result.extend(group[:3])
-            shown_ids.update([u["id"] for u in group[:3]])
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
         
-        # 4. 分数匹配（无专业匹配但分数接近）- 仅当未指定专业时使用
-        if score and score > 0 and not major:
+        # ==================== 场景5: 只有省份+分数（无专业） ====================
+        elif province and score and score > 0 and not major:
+            # 5.1 该省符合分数的大学
             group = []
             for u in self.universities:
                 if u["id"] in shown_ids:
                     continue
-                scores = [s for s in u["admission_scores"] if s["province"] == province]
-                if scores:
-                    latest = scores[0]
+                latest = get_score_for_province(u, province)
+                if not latest:
+                    continue
+                
+                score_val = latest["min_score"]
+                if score - 30 <= score_val <= score + 30:
+                    group.append({
+                        **u,
+                        "match_type": "score",
+                        "match_reason": f"本省{province}高校，录取分{int(score_val)}分，与您分数({score}分)匹配",
+                        "latest_score": latest,
+                        "major_match_score": 0
+                    })
+            
+            group.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
+            
+            # 5.2 全国符合分数的大学（排除已显示的）
+            if len(group) < 5:
+                group2 = []
+                for u in self.universities:
+                    if u["id"] in shown_ids:
+                        continue
+                    latest = u["admission_scores"][0] if u.get("admission_scores") else None
+                    if not latest:
+                        continue
+                    
                     score_val = latest["min_score"]
                     if score - 30 <= score_val <= score + 30:
-                        group.append({
+                        group2.append({
                             **u,
-                            "match_type": "score",
+                            "match_type": "national",
                             "match_reason": f"录取分{int(score_val)}分，与您分数({score}分)接近",
                             "latest_score": latest,
                             "major_match_score": 0
                         })
-            
-            group.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
-            result.extend(group[:3])
-            shown_ids.update([u["id"] for u in group[:3]])
+                
+                group2.sort(key=lambda x: x["latest_score"]["min_score"], reverse=True)
+                group2 = group2[:(5 - len(group))]
+                result.extend(group2)
+                shown_ids.update([u["id"] for u in group2])
         
-        # 5. 同省大学（无专业匹配但在本省）- 仅当未指定专业时使用
-        if province and not major:
+        # ==================== 场景6: 只有省份（无专业） ====================
+        elif province and not score and not major:
+            # 本省高校按就业率排序
             group = []
             for u in self.universities:
                 if u["id"] in shown_ids or u["province"] != province:
                     continue
-                scores = [s for s in u["admission_scores"] if s["province"] == province]
-                latest = scores[0] if scores else None
+                latest = get_score_for_province(u, province)
                 group.append({
                     **u,
                     "match_type": "province",
-                    "match_reason": f"位于{u['city']}，本省高校，就业率{u['employment_rate']}%",
+                    "match_reason": f"本省{province}高校，就业率{u['employment_rate']}%",
                     "latest_score": latest,
                     "major_match_score": 0
                 })
             
             group.sort(key=lambda x: x["employment_rate"], reverse=True)
-            result.extend(group[:3])
-            shown_ids.update([u["id"] for u in group[:3]])
+            result.extend(group[:5])
+            shown_ids.update([u["id"] for u in group[:5]])
         
-        # 6. 全国推荐（排除已显示的）- 仅当未指定专业时使用
-        if not major:
+        # ==================== 默认兜底 ====================
+        if len(result) == 0:
+            # 返回知名度最高的大学（就业率最高的）
             group = []
             for u in self.universities:
                 if u["id"] in shown_ids:
                     continue
-                scores = [s for s in u["admission_scores"] if s["province"] == "山西"]
-                latest = scores[0] if scores else None
+                latest = u["admission_scores"][0] if u.get("admission_scores") else None
                 group.append({
                     **u,
                     "match_type": "national",
@@ -956,7 +1649,7 @@ class UniversityDataService:
             result.extend(group[:5])
         
         return {
-            "universities": result,
+            "universities": result[:limit],
             "user_target": {
                 "province": province,
                 "score": score,

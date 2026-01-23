@@ -47,6 +47,22 @@ interface AdmissionScore {
   batch: string;
 }
 
+interface University {
+  id: number;
+  name: string;
+  level: string;
+  province: string;
+  city: string;
+  employment_rate: number;
+  type: string;
+  major_strengths: string[];
+  admission_scores: AdmissionScore[];
+  match_type: 'score' | 'province' | 'national';
+  match_reason: string;
+  latest_score?: AdmissionScore;
+  major_match_score?: number;
+}
+
 interface RecommendedUniversitiesResponse {
   universities: University[];
   user_target: {
@@ -67,6 +83,46 @@ interface MajorIntroduction {
 }
 
 const API_BASE = 'http://localhost:8004';
+
+// 格式化历史录取分数（最近1年 + 过往2-3年）
+const formatAdmissionScores = (scores: AdmissionScore[], targetProvince: string): string => {
+  if (!scores || scores.length === 0) return '';
+  
+  // 筛选目标省份的数据
+  const provinceScores = scores.filter(s => s.province === targetProvince);
+  if (provinceScores.length === 0) return '';
+  
+  // 按年份降序排序
+  const sorted = [...provinceScores].sort((a, b) => b.year - a.year);
+  
+  // 最近一年
+  const latest = sorted[0];
+  
+  // 过往2-3年（最多取2个）
+  const history = sorted.slice(1, 3);
+  
+  if (history.length > 0) {
+    const historyStr = history.map(s => `${s.year}年${s.min_score}分`).join(' → ');
+    return `${latest.year}年: ${latest.min_score}分 (${historyStr})`;
+  }
+  
+  return `${latest.year}年: ${latest.min_score}分`;
+};
+
+// 获取最新录取分数显示
+const getLatestScoreDisplay = (scores: AdmissionScore[], targetProvince: string): { year: number; minScore: number; province: string } | null => {
+  if (!scores || scores.length === 0) return null;
+  
+  const provinceScores = scores.filter(s => s.province === targetProvince);
+  const sorted = [...(provinceScores.length > 0 ? provinceScores : scores)].sort((a, b) => b.year - a.year);
+  const latest = sorted[0];
+  
+  return {
+    year: latest.year,
+    minScore: latest.min_score,
+    province: latest.province
+  };
+};
 
 // 硬编码的专业介绍数据（备用，现在从API获取）
 // const majorIntroductions: Record<string, MajorIntroduction> = {
@@ -93,15 +149,28 @@ const MajorDetailPage: React.FC = () => {
   const [selectedRelatedMajor, setSelectedRelatedMajor] = useState<string | null>(null);
   const [majorIntro, setMajorIntro] = useState<MajorIntroduction | null>(null);
   const [introLoading, setIntroLoading] = useState(true);
+  const [hasSeenTargetModal, setHasSeenTargetModal] = useState(false); // 记录是否已显示过弹窗
 
   useEffect(() => {
     const savedTarget = localStorage.getItem('userTarget');
     if (savedTarget) {
       setUserTarget(JSON.parse(savedTarget));
-    } else {
-      setShowTargetModal(true);
     }
   }, []);
+
+  // 监听切换到推荐大学选项卡，首次进入显示弹窗
+  useEffect(() => {
+    if (activeTab === 'universities') {
+      const savedTarget = localStorage.getItem('userTarget');
+      const hasSeen = localStorage.getItem('hasSeenTargetModal');
+      
+      if (!savedTarget && !hasSeen) {
+        setShowTargetModal(true);
+        setHasSeenTargetModal(true);
+        localStorage.setItem('hasSeenTargetModal', 'true');
+      }
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchMajorIntro = async () => {
@@ -263,15 +332,44 @@ const MajorDetailPage: React.FC = () => {
   }, [universities]);
 
   const handleSaveTarget = () => {
-    if (targetForm.province) {
-      const target: UserTarget = {
-        province: targetForm.province,
-        score: targetForm.score ? parseInt(targetForm.score) : undefined
-      };
-      setUserTarget(target);
-      localStorage.setItem('userTarget', JSON.stringify(target));
-      setShowTargetModal(false);
-      window.location.reload();
+    const target: UserTarget = {
+      province: targetForm.province || undefined,
+      score: targetForm.score ? parseInt(targetForm.score) : undefined
+    };
+    setUserTarget(target);
+    localStorage.setItem('userTarget', JSON.stringify(target));
+    setShowTargetModal(false);
+    // 重新获取推荐大学数据
+    fetchUniversities(target);
+  };
+
+  // 获取推荐大学数据
+  const fetchUniversities = async (target: UserTarget) => {
+    try {
+      let apiUrl = `${API_BASE}/api/v1/universities/recommend`;
+      const params = new URLSearchParams();
+      
+      if (target.province) {
+        params.append('province', target.province);
+      }
+      if (target.score) {
+        params.append('score', target.score.toString());
+      }
+      if (major?.major_name) {
+        params.append('major', major.major_name);
+      }
+      
+      if (params.toString()) {
+        apiUrl += `?${params.toString()}`;
+      }
+      
+      const uniResponse = await fetch(apiUrl);
+      if (uniResponse.ok) {
+        const uniData: RecommendedUniversitiesResponse = await uniResponse.json();
+        setUniversities(uniData.universities || []);
+      }
+    } catch (err) {
+      console.error('获取推荐大学失败:', err);
     }
   };
 
@@ -391,6 +489,140 @@ const MajorDetailPage: React.FC = () => {
             </motion.div>
           )}
 
+          {activeTab === 'universities' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              {/* 右侧修改目标按钮 */}
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setTargetForm({
+                      province: userTarget?.province || '',
+                      score: userTarget?.score?.toString() || ''
+                    });
+                    setShowTargetModal(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {userTarget?.province ? '修改目标' : '设置目标'}
+                </button>
+              </div>
+
+              {/* 当前目标显示 */}
+              {userTarget?.province && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-blue-600 dark:text-blue-400 font-medium">当前目标：</span>
+                    <span className="text-gray-700 dark:text-gray-300">{userTarget.province}</span>
+                    {userTarget.score && <span className="text-gray-500">• 预估分数 {userTarget.score} 分</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* 大学列表 */}
+              {universityGroups.length > 0 ? (
+                <div className="space-y-6">
+                  {universityGroups.map((group) => (
+                    <div key={group.type}>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        {group.name}
+                        <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({group.list.length})</span>
+                      </h3>
+                      <div className="space-y-3">
+                        {group.list.map((university) => (
+                          <motion.a
+                            key={university.id}
+                            href={university.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-center gap-4 p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-100 dark:border-gray-600 hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-700 transition-all duration-300 group"
+                          >
+                            {/* 排名/标签 */}
+                            <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/30 dark:to-blue-900/30 rounded-lg flex items-center justify-center">
+                              <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                                {university.level.includes('985') ? '985' : university.level.includes('211') ? '211' : '其他'}
+                              </span>
+                            </div>
+                            
+                            {/* 内容 */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                  {university.name}
+                                </h4>
+                                {university.level.split('/').map(level => (
+                                  <span key={level} className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    level === '985' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' :
+                                    level === '211' ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' :
+                                    'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400'
+                                  }`}>
+                                    {level}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                                <span>{university.province} {university.city}</span>
+                                <span>•</span>
+                                <span className="text-green-600 dark:text-green-400 font-medium">就业率 {university.employment_rate}%</span>
+                              </div>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{university.match_reason}</p>
+                            </div>
+
+                            {/* 录取分数 */}
+                            {(() => {
+                              const latestDisplay = getLatestScoreDisplay(university.admission_scores, userTarget?.province || '');
+                              const historyDisplay = formatAdmissionScores(university.admission_scores, userTarget?.province || '');
+                              
+                              return (
+                                <div className="flex-shrink-0 text-right min-w-[100px]">
+                                  {latestDisplay && (
+                                    <div className="text-lg font-bold text-orange-500">{latestDisplay.minScore}分</div>
+                                  )}
+                                  {latestDisplay && (
+                                    <div className="text-xs text-gray-400">{latestDisplay.province} {latestDisplay.year}年</div>
+                                  )}
+                                  {historyDisplay && (
+                                    <div className="text-xs text-gray-400 mt-1" title={historyDisplay}>
+                                      📈 历史: {historyDisplay.split('(')[1]?.replace(')', '') || ''}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 箭头 */}
+                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                              </svg>
+                            </div>
+                          </motion.a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-5xl mb-4">🎓</div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">暂无推荐大学</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">设置您的省份和分数，获取个性化的大学推荐</p>
+                  <button
+                    onClick={() => setShowTargetModal(true)}
+                    className="btn-primary"
+                  >
+                    立即设置
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
         </div>
 
         {major.notes && major.notes.length > 0 && (
@@ -438,23 +670,46 @@ const MajorDetailPage: React.FC = () => {
       {showTargetModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-4 dark:text-white">🎯 设置您的目标</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">设置省份和预估分数，获取个性化的大学推荐</p>
+            <h2 className="text-xl font-bold mb-2 dark:text-white">🎯 设置您的目标</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">设置省份和预估分数，获取更精准的大学推荐（可只设置其中一项或不设置）</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">目标省份</label>
-                <select className="input w-full dark:bg-gray-700 dark:text-white" value={targetForm.province} onChange={(e) => setTargetForm({ ...targetForm, province: e.target.value })}>
-                  <option value="">请选择省份</option>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">目标省份（可选）</label>
+                <select 
+                  className="input w-full dark:bg-gray-700 dark:text-white" 
+                  value={targetForm.province} 
+                  onChange={(e) => setTargetForm({ ...targetForm, province: e.target.value })}
+                >
+                  <option value="">不设置省份</option>
                   {['北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江', '上海', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东', '广西', '海南', '重庆', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '宁夏', '新疆'].map(p => (<option key={p} value={p}>{p}</option>))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">预估分数</label>
-                <input type="number" className="input w-full dark:bg-gray-700 dark:text-white" placeholder="请输入预估分数" value={targetForm.score} onChange={(e) => setTargetForm({ ...targetForm, score: e.target.value })} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">预估分数（可选）</label>
+                <input 
+                  type="number" 
+                  className="input w-full dark:bg-gray-700 dark:text-white" 
+                  placeholder="不设置分数，按专业推荐" 
+                  value={targetForm.score} 
+                  onChange={(e) => setTargetForm({ ...targetForm, score: e.target.value })} 
+                />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowTargetModal(false)} className="flex-1 btn-secondary dark:bg-gray-700 dark:text-white">取消</button>
-                <button onClick={handleSaveTarget} disabled={!targetForm.province} className="flex-1 btn-primary disabled:opacity-50">确认应用</button>
+                <button onClick={() => {
+                  // 如果之前没有设置过目标，关闭后仍需显示空结果
+                  const savedTarget = localStorage.getItem('userTarget');
+                  if (!savedTarget && !targetForm.province && !targetForm.score) {
+                    // 用户主动取消，保存空目标
+                    handleSaveTarget();
+                  } else {
+                    setShowTargetModal(false);
+                  }
+                }} className="flex-1 btn-secondary dark:bg-gray-700 dark:text-white">
+                  {userTarget?.province || userTarget?.score ? '取消' : '跳过'}
+                </button>
+                <button onClick={handleSaveTarget} className="flex-1 btn-primary">
+                  确认应用
+                </button>
               </div>
             </div>
           </motion.div>
