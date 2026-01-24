@@ -1,0 +1,22 @@
+{
+  "environment": "development",
+  "cache": {
+    "enabled": false,
+    "development_mode": true,
+    "note": "开发期间禁用Redis缓存，确保API直接从PostgreSQL获取最新数据"
+  },
+  "data_sources": {
+    "use_real_data": true,
+    "prohibit_mock_data": true,
+    "note": "所有数据必须通过爬虫从真实网站获取，禁止使用模拟数据"
+  },
+  "development": {
+    "cache_disabled_at": "2026-01-25T00:00:00Z",
+    "cache_enable_trigger": "等待用户明确指令：'现在可以启用Redis缓存了'",
+    "data_flow": "前端 → 后端API → PostgreSQL数据库"
+  },
+  "production": {
+    "cache_enabled": true,
+    "data_flow": "前端 → 后端API → Redis缓存 → PostgreSQL数据库"
+  }
+}

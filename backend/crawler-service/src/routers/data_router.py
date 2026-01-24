@@ -10,11 +10,13 @@
 """
 
 from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi.encoders import jsonable_encoder
 from typing import Optional
 import sys
 import os
 import uuid
 import httpx
+import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -56,30 +58,23 @@ def get_cache_headers(key: str) -> dict:
 
 @router.get("/categories")
 async def get_categories(parent_id: Optional[int] = None):
-    """获取学科分类列表（从数据库读取，支持Redis缓存）"""
+    """获取学科分类列表（从数据库读取，暂时禁用缓存）"""
     try:
-        # 构建缓存键
-        cache_key = CacheKeyBuilder.categories()
-        
-        # 尝试从缓存读取
-        cached_data = cache_service.get(cache_key)
-        if cached_data:
-            return Response(
-                content=str(cached_data),
-                headers={**get_cache_headers(cache_key), "X-Cache": "HIT"},
-                media_type="application/json"
-            )
-        
         # 从数据库读取
         categories = data_service.get_categories(parent_id)
+        
+        # 手动处理datetime对象，确保JSON序列化正确
+        for cat in categories:
+            if 'created_at' in cat and cat['created_at']:
+                cat['created_at'] = cat['created_at'].isoformat() if hasattr(cat['created_at'], 'isoformat') else str(cat['created_at'])
+            if 'updated_at' in cat and cat['updated_at']:
+                cat['updated_at'] = cat['updated_at'].isoformat() if hasattr(cat['updated_at'], 'isoformat') else str(cat['updated_at'])
+        
         result = {"data": categories, "total": len(categories)}
         
-        # 写入缓存
-        cache_service.set(cache_key, result)
-        
         return Response(
-            content=str(result),
-            headers={**get_cache_headers(cache_key), "X-Cache": "MISS"},
+            content=json.dumps(result, ensure_ascii=False),
+            headers={"X-Cache": "DISABLED"},
             media_type="application/json"
         )
     except Exception as e:

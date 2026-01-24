@@ -158,11 +158,14 @@
     }
   },
   "cache": {
-    "enabled": true,
+    "enabled": false,
+    "development_mode": true,
     "redis_host": "localhost",
     "redis_port": 6379,
     "default_ttl_hours": 12,
-    "invalidate_on_crawl_complete": true
+    "invalidate_on_crawl_complete": true,
+    "development_note": "开发期间禁用缓存，等待用户明确启用后再开启",
+    "cache_disabled_header": "X-Cache: DISABLED"
   },
   "crawler": {
     "default_request_delay_seconds": 2,

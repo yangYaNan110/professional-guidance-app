@@ -73,7 +73,8 @@ class CrawlerDataService:
                 else:
                     cursor.execute("SELECT * FROM major_categories WHERE parent_id = %s ORDER BY sort_order", (parent_id,))
                 rows = cursor.fetchall()
-                return [MajorCategory(**row) for row in rows]
+                # 直接返回字典列表，避免Pydantic模型序列化问题
+                return [dict(row) for row in rows]
         except Exception as e:
             logger.error(f"获取学科分类失败: {e}")
             raise

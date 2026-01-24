@@ -20,7 +20,9 @@ from typing import Optional, List, Dict
 from datetime import datetime
 import uuid
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 添加当前目录到Python路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
 
 from services.data_manager import MajorDataManager
 from services.crawler import MajorDataCrawler
@@ -215,10 +217,21 @@ async def get_config():
         "config_path": crawler_config.config_path,
         "force_re_crawl_on_startup": crawler_config.force_re_crawl_on_startup,
         "data_sources_count": len(crawler_config.get_enabled_data_sources()),
+        "data_sources": crawler_config.config.get("data_sources", {}),
         "scheduler": crawler_config.get_scheduler_config(),
         "cache": crawler_config.get_cache_config(),
         "crawler": crawler_config.get_crawler_config()
     }
+
+@app.get("/api/v1/admin/config/full")
+async def get_full_config():
+    """获取完整配置（管理员接口）"""
+    global crawler_config
+    
+    if crawler_config is None:
+        crawler_config = get_crawler_config()
+    
+    return crawler_config.config
 
 
 @app.get("/api/v1/admin/config/schedule")
@@ -2174,39 +2187,512 @@ async def get_recommended_universities(
     """
     获取推荐大学列表（根据用户目标）
     
-    返回分组结果：
-    - score_match: 分数匹配大学（当设置省份和分数时）
-    - province_match: 同省优质大学（当只设置省份时）
-    - national_match: 全国推荐大学（所有场景）
+    三场景推荐逻辑：
+    - 场景A：省份+分数+专业 → 同省分数匹配 + 全国分数和专业匹配
+    - 场景B：只有省份+专业 → 同省优质 + 全国优质
+    - 场景C：什么都没填+专业 → 全国优质大学
     """
     try:
-        # 使用新版推荐函数返回分组结果
-        result = university_service.get_recommended_universities_new(
-            province=province,
-            score=score,
-            major_name=major,
-            limit_per_group=limit
+        # 如果没有提供major，返回空结果
+        if not major:
+            return {
+                "universities": [],
+                "groups": {
+                    "score_match": None,
+                    "province_match": None,
+                    "national_match": None
+                },
+                "scenario": "error",
+                "total": 0
+            }
+        
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        
+        conn = psycopg2.connect(
+            host='localhost',
+            port=5432,
+            database='employment',
+            user='postgres',
+            password='postgres'
         )
         
-        # 构建响应
-        universities = []
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            # 确定场景和推荐策略
+            if province and score is not None:
+                # 场景A：省份+分数+专业
+                scenario = "A"
+                
+                # 1. 同省分数匹配大学：省份内录取分在score±30分的计算机相关专业
+                score_min = score - 30
+                score_max = score + 30
+                
+                cursor.execute("""
+                    SELECT DISTINCT
+                        u.id,
+                        u.name,
+                        u.level,
+                        u.province,
+                        u.city,
+                        u.employment_rate,
+                        u.major_strengths,
+                        u.website,
+                        'score' as match_type,
+                        '🏆 分数匹配大学' as match_reason,
+                        CASE 
+                            WHEN uas.avg_score IS NOT NULL THEN 
+                                100 - ABS(uas.avg_score - %s) / 100.0
+                            ELSE 0.5 
+                        END as score_match_score
+                    FROM universities u
+                    LEFT JOIN university_admission_scores uas ON u.id = uas.university_id
+                        AND uas.major_name = %s 
+                        AND uas.province = %s
+                    WHERE u.province = %s 
+                        AND (uas.avg_score BETWEEN %s AND %s OR uas.avg_score IS NULL)
+                    ORDER BY score_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (score, major, province, province, score_min, score_max, limit))
+                
+                score_match_universities = cursor.fetchall()
+                
+                # 2. 全国分数和专业匹配大学：全国范围内符合分数和专业的大学
+                cursor.execute("""
+                    SELECT DISTINCT
+                        u.id,
+                        u.name,
+                        u.level,
+                        u.province,
+                        u.city,
+                        u.employment_rate,
+                        u.major_strengths,
+                        u.website,
+                        'score' as match_type,
+                        '🏆 分数匹配大学' as match_reason,
+                        CASE 
+                            WHEN uas.avg_score IS NOT NULL THEN 
+                                100 - ABS(uas.avg_score - %s) / 100.0
+                            ELSE 0.5 
+                        END as score_match_score
+                    FROM universities u
+                    LEFT JOIN university_admission_scores uas ON u.id = uas.university_id
+                        AND uas.major_name = %s
+                    WHERE uas.avg_score BETWEEN %s AND %s
+                    ORDER BY score_match_score DESC, u.employment_rate DESC
+                    LIMIT %s
+                """, (score, major, score_min, score_max, limit))
+                
+                national_score_match_universities = cursor.fetchall()
+                
+                # 构建响应
+                universities = []
+                universities.extend(score_match_universities)
+                universities.extend(national_score_match_universities)
+                
+                return {
+                    "universities": universities,
+                    "groups": {
+                        "score_match": {
+                            "name": "🏆 分数匹配大学",
+                            "count": len(score_match_universities),
+                            "description": f"录取分数在{score}±30分范围内的高校"
+                        },
+                        "province_match": None,
+                        "national_match": {
+                            "name": "🌟 全国推荐大学",
+                            "count": len(national_score_match_universities),
+                            "description": "全国范围内符合分数和专业的大学"
+                        }
+                    },
+                    "scenario": "A",
+                    "total": len(universities)
+                }
+                
+            elif province and score is None:
+                # 场景B：只有省份+专业
+                scenario = "B"
+                
+                # 1. Python智能专业匹配：获取省内所有大学，使用智能算法进行匹配和排序
+                cursor.execute("""
+                    SELECT DISTINCT
+                        u.id,
+                        u.name,
+                        u.level,
+                        u.province,
+                        u.city,
+                        u.employment_rate,
+                        u.major_strengths,
+                        u.website,
+                        'province' as match_type,
+                        '📍 同省优质大学' as match_reason
+                    FROM universities u
+                    WHERE u.province = %s
+                    ORDER BY 
+                        CASE 
+                            WHEN u.level LIKE '%985%' THEN 1
+                            WHEN u.level LIKE '%211%' THEN 2
+                            WHEN u.level LIKE '%双一流%' THEN 3
+                            ELSE 4
+                        END,
+                        u.employment_rate DESC
+                    LIMIT %s
+                """, (province, limit * 2))  # 获取更多数据以便智能筛选
+                
+                all_province_universities = cursor.fetchall()
+                
+                # 智能专业匹配算法
+                def intelligent_major_matching(target_major, university_strengths):
+                    """
+                    智能专业匹配算法
+                    支持动态专业类别识别和跨学科匹配
+                    """
+                    if university_strengths is None:
+                        return 0.95, "无专业限制", "可匹配任何专业"  # 最高优先级：无专业限制
+                    
+                    if target_major in university_strengths:
+                        return 1.0, "直接匹配", f"直接开设{target_major}专业"  # 直接匹配
+                    
+                    # 专业类别映射表
+                    category_mappings = {
+                        'engineering_ai': {
+                            'targets': [
+                                '人工智能', '计算机科学与技术', '软件工程', '数据科学', '网络工程', 
+                                '信息安全', '物联网工程', '数字媒体技术', '智能科学与技术',
+                                '区块链工程', '虚拟现实技术', '增强现实技术', '数据科学与大数据技术'
+                            ],
+                            'related': [
+                                '计算机科学与技术', '软件工程', '人工智能', '自动化', 
+                                '电子信息工程', '通信工程', '网络工程', '信息安全', 
+                                '物联网工程', '数字媒体技术', '智能科学与技术',
+                                '数据科学与大数据技术', '电子科学与技术', '微电子学',
+                                '数据结构', '算法设计', '机器学习', '深度学习'
+                            ]
+                        },
+                        'science_fundamental': {
+                            'targets': [
+                                '数学', '物理学', '化学', '生物学', '统计学', 
+                                '应用数学', '应用物理学', '应用化学', '生物技术', 
+                                '生物信息学', '材料科学', '环境科学'
+                            ],
+                            'related': [
+                                '数学', '物理学', '化学', '生物学', '统计学', 
+                                '应用数学', '应用物理学', '应用化学', '生物技术', 
+                                '生物信息学', '材料科学', '环境科学',
+                                '基础数学', '理论物理', '有机化学', '分子生物学'
+                            ]
+                        },
+                        'business_economics': {
+                            'targets': [
+                                '经济学', '金融学', '国际经济与贸易', '工商管理', '市场营销', '会计学', 
+                                '财务管理', '人力资源管理', '电子商务', '物流管理'
+                            ],
+                            'related': [
+                                '经济学', '金融学', '工商管理', '会计学', '市场营销', 
+                                '财务管理', '人力资源管理', '国际经济与贸易',
+                                '电子商务', '物流管理', '保险学', '投资学',
+                                '国际贸易', '商务管理', '市场营销管理'
+                            ]
+                        },
+                        'medicine_health': {
+                            'targets': [
+                                '临床医学', '口腔医学', '中医学', '护理学', 
+                                '药学', '预防医学', '医学影像学', '基础医学',
+                                '康复治疗学', '眼视光学', '精神医学'
+                            ],
+                            'related': [
+                                '临床医学', '口腔医学', '中医学', '护理学', 
+                                '药学', '预防医学', '医学影像学', '基础医学',
+                                '康复治疗学', '眼视光学', '精神医学', '中西医结合',
+                                '医学检验技术', '口腔医学技术', '药学技术'
+                            ]
+                        },
+                        'law_politics': {
+                            'targets': [
+                                '法学', '政治学与行政学', '国际政治', '社会学', 
+                                '民族学', '知识产权', '马克思主义理论',
+                                '思想政治教育', '国际关系', '外交学'
+                            ],
+                            'related': [
+                                '法学', '政治学与行政学', '国际政治', '社会学', 
+                                '民族学', '知识产权', '马克思主义理论',
+                                '思想政治教育', '国际关系', '外交学',
+                                '宪法学与行政法学', '刑法学', '民商法学', '经济法学'
+                            ]
+                        },
+                        'humanities_arts': {
+                            'targets': [
+                                '汉语言文学', '历史学', '哲学', '考古学', 
+                                '文物与博物馆学', '古典文献学', '艺术设计学',
+                                '音乐学', '美术学', '戏剧影视文学', '新闻传播学'
+                            ],
+                            'related': [
+                                '汉语言文学', '历史学', '哲学', '考古学', 
+                                '文物与博物馆学', '古典文献学', '艺术设计学',
+                                '音乐学', '美术学', '戏剧影视文学', '新闻传播学',
+                                '传播学', '广播电视学', '广告学', '编辑出版学',
+                                '中国语言文学', '世界历史', '逻辑学', '伦理学'
+                            ]
+                        },
+                        'education_psychology': {
+                            'targets': [
+                                '教育学', '学前教育', '小学教育', '特殊教育', 
+                                '教育技术学', '心理学', '应用心理学', 
+                                '教育康复学', '体育教育', '运动训练'
+                            ],
+                            'related': [
+                                '教育学', '学前教育', '小学教育', '特殊教育', 
+                                '教育技术学', '心理学', '应用心理学', 
+                                '教育康复学', '体育教育', '运动训练',
+                                '发展与教育心理学', '认知科学', '教育管理', '课程与教学论'
+                            ]
+                        }
+                    }
+                    
+                    # 确定目标专业属于哪个类别
+                    target_category = None
+                    for category, mapping in category_mappings.items():
+                        if target_major in mapping['targets']:
+                            target_category = category
+                            break
+                    
+                    if target_category:
+                        related_majors = category_mappings[target_category]['related']
+                        if any(major in university_strengths for major in related_majors):
+                            return 0.8, "相关专业", f"属于{target_category}类别相关专业"  # 相关专业
+                    
+                    # 跨学科匹配：新兴专业可以匹配其他类别
+                    cross_discipline_mappings = {
+                        '人工智能': ['engineering_ai', 'science_fundamental'],  # 人工智能可匹配工科和理科
+                        '数据科学': ['engineering_ai', 'science_fundamental'],  # 数据科学可匹配工科和理科
+                        '金融科技': ['business_economics', 'engineering_ai'],  # 金融科技可匹配商科和工科
+                        '生物信息学': ['medicine_health', 'science_fundamental'],  # 生物信息学可匹配医学和理科
+                        '计算语言学': ['humanities_arts', 'engineering_ai'],  # 计算语言学可匹配文科和工科
+                    }
+                    
+                    if target_major in cross_discipline_mappings:
+                        for category in cross_discipline_mappings[target_major]:
+                            related_majors = category_mappings[category]['related']
+                            if any(major in university_strengths for major in related_majors):
+                                return 0.6, "跨学科相关", f"跨{category}类相关"  # 跨学科相关
+                    
+                    # 通用匹配：检查是否有任何相关学科
+                    general_related_majors = []
+                    for mapping in category_mappings.values():
+                        general_related_majors.extend(mapping['related'])
+                    
+                    # 去重
+                    general_related_majors = list(set(general_related_majors))
+                    if any(major in university_strengths for major in general_related_majors[:10]):  # 检查前10个最相关专业
+                        return 0.4, "通用相关", "相关学科匹配"
+                    
+                    # 兜底匹配：任何专业都有基础分，确保不遗漏
+                    return 0.2, "兜底推荐", "基础匹配，确保覆盖"
+                
+                # 为每所大学计算综合评分并排序
+                scored_universities = []
+                for uni in all_province_universities:
+                    # 提取数据
+                    uni_id = uni[0]
+                    uni_name = uni[1] 
+                    uni_level = uni[2]
+                    uni_province = uni[3]
+                    uni_city = uni[4]
+                    uni_employment_rate = uni[5]
+                    uni_strengths = uni[6]
+                    uni_website = uni[7]
+                    uni_match_type = uni[8]
+                    uni_match_reason = uni[9]
+                    
+                    # 计算专业匹配分数
+                    major_score, match_type_desc, match_detail = intelligent_major_matching(major, uni_strengths)
+                    
+                    # 计算大学层次分数
+                    if '985' in uni_level:
+                        level_score = 1
+                        level_rank_name = '985'
+                    elif '211' in uni_level:
+                        level_score = 2
+                        level_rank_name = '211'
+                    elif '双一流' in uni_level:
+                        level_score = 3
+                        level_rank_name = '双一流'
+                    else:
+                        level_score = 4
+                        level_rank_name = '省属重点'
+                    
+                    # 计算综合评分（层次优先 + 专业匹配度 + 就业率）
+                    # 综合评分 = 专业匹配分数 * 100 + (5-层次分数) * 20 + 就业率 * 0.5
+                    total_score = major_score * 100 + (5 - level_score) * 20 + uni_employment_rate * 0.5
+                    
+                    scored_uni = {
+                        'id': uni_id,
+                        'name': uni_name,
+                        'level': uni_level,
+                        'province': uni_province,
+                        'city': uni_city,
+                        'employment_rate': uni_employment_rate,
+                        'major_strengths': uni_strengths,
+                        'website': uni_website,
+                        'match_type': uni_match_type,
+                        'match_reason': uni_match_reason,
+                        'major_score': major_score,
+                        'match_type_desc': match_type_desc,
+                        'match_detail': match_detail,
+                        'level_score': level_score,
+                        'level_rank_name': level_rank_name,
+                        'total_score': total_score
+                    }
+                    scored_universities.append(scored_uni)
+                
+                # 智能排序：层次优先 + 专业匹配度 + 就业率
+                scored_universities.sort(key=lambda x: (
+                    x['level_score'],           # 1. 层次优先（985=1, 211=2, 双一流=3, 其他=4）
+                    -x['major_score'],           # 2. 专业匹配度降序
+                    -x['employment_rate']       # 3. 就业率降序
+                ))
+                
+                # 取前N所大学
+                province_match_universities = scored_universities[:limit]
+                
+                # 转换为数据库结果格式
+                final_province_universities = []
+                for uni in province_match_universities:
+                    final_province_universities.append({
+                        'id': uni['id'],
+                        'name': uni['name'],
+                        'level': uni['level'],
+                        'province': uni['province'],
+                        'city': uni['city'],
+                        'employment_rate': uni['employment_rate'],
+                        'major_strengths': uni['major_strengths'],
+                        'website': uni['website'],
+                        'match_type': uni['match_type'],
+                        'match_reason': uni['match_reason']
+                    })
+                
+                # 2. 全国优质大学：全国范围内该专业相对排名靠前的大学
+                cursor.execute("""
+                    SELECT DISTINCT
+                        u.id,
+                        u.name,
+                        u.level,
+                        u.province,
+                        u.city,
+                        u.employment_rate,
+                        u.major_strengths,
+                        u.website,
+                        'national' as match_type,
+                        '🌟 全国推荐大学' as match_reason,
+                        CASE 
+                            WHEN %s = ANY(u.major_strengths) THEN 1
+                            WHEN u.major_strengths IS NULL THEN 0.5
+                            ELSE 0
+                        END as major_match_score
+                    FROM universities u
+                    WHERE (%s = ANY(u.major_strengths) OR u.major_strengths IS NULL)
+                    ORDER BY major_match_score DESC,
+                        CASE 
+                            WHEN u.level LIKE '%985%' THEN 1
+                            WHEN u.level LIKE '%211%' THEN 2
+                            WHEN u.level LIKE '%双一流%' THEN 3
+                            ELSE 4
+                        END,
+                        u.employment_rate DESC
+                    LIMIT %s
+                """, (major, major, limit))
+                
+                national_match_universities = cursor.fetchall()
+                
+                # 构建响应
+                universities = []
+                universities.extend(province_match_universities)
+                universities.extend(national_match_universities)
+                
+                return {
+                    "universities": universities,
+                    "groups": {
+                        "score_match": None,
+                        "province_match": {
+                            "name": "📍 同省优质大学",
+                            "count": len(province_match_universities),
+                            "description": f"您所在省份内该专业的优质高校"
+                        },
+                        "national_match": {
+                            "name": "🌟 全国推荐大学",
+                            "count": len(national_match_universities),
+                            "description": "全国范围内该专业的优质高校"
+                        }
+                    },
+                    "scenario": "B",
+                    "total": len(universities)
+                }
+                
+            else:
+                # 场景C：什么都没填+专业
+                scenario = "C"
+                
+                # 全国推荐大学：全国范围内该专业排名靠前的大学
+                cursor.execute("""
+                    SELECT DISTINCT
+                        u.id,
+                        u.name,
+                        u.level,
+                        u.province,
+                        u.city,
+                        u.employment_rate,
+                        u.major_strengths,
+                        u.website,
+                        'national' as match_type,
+                        '🌟 全国推荐大学' as match_reason,
+                        CASE 
+                            WHEN %s = ANY(u.major_strengths) THEN 1
+                            WHEN u.major_strengths IS NULL THEN 0.5
+                            ELSE 0
+                        END as major_match_score
+                    FROM universities u
+                    WHERE (%s = ANY(u.major_strengths) OR u.major_strengths IS NULL)
+                    ORDER BY major_match_score DESC,
+                        CASE 
+                            WHEN u.level LIKE '%985%' THEN 1
+                            WHEN u.level LIKE '%211%' THEN 2
+                            WHEN u.level LIKE '%双一流%' THEN 3
+                            ELSE 4
+                        END,
+                        u.employment_rate DESC
+                    LIMIT %s
+                """, (major, major, limit))
+                
+                national_match_universities = cursor.fetchall()
+                
+                return {
+                    "universities": national_match_universities,
+                    "groups": {
+                        "score_match": None,
+                        "province_match": None,
+                        "national_match": {
+                            "name": "🌟 全国推荐大学",
+                            "count": len(national_match_universities),
+                            "description": "全国范围内该专业的优质高校"
+                        }
+                    },
+                    "scenario": "C",
+                    "total": len(national_match_universities)
+                }
         
-        # 分数匹配大学
-        for u in result.get("score_match", []):
-            u["match_type"] = "score"
-            universities.append(u)
-        
-        # 同省优质大学
-        for u in result.get("province_match", []):
-            u["match_type"] = "province"
-            universities.append(u)
-        
-        # 全国推荐大学
-        for u in result.get("national_match", []):
-            u["match_type"] = "national"
-            universities.append(u)
-        
-        # 返回分组信息
+    except Exception as e:
+        logger.error(f"获取推荐大学失败: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "universities": [],
+            "groups": {
+                "score_match": None,
+                "province_match": None,
+                "national_match": None
+            },
+            "scenario": "error",
+            "total": 0
+        }
         return {
             "universities": universities,
             "groups": {

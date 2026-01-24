@@ -290,22 +290,30 @@ class UniversityDataService:
         limit_per_group: int = 5
     ) -> Dict[str, List[Dict]]:
         """
-        获取推荐大学列表（新版推荐算法）
-        
-        场景A（省份+分数+专业）：同省分数匹配 + 全国分数和专业匹配
-        场景B（只有省份+专业）：同省优质 + 全国优质
-        场景C（什么都没填+专业）：全国优质
+        获取推荐大学列表（简化版）
         """
         result = {
-            "score_match": [],      # 分数匹配大学
-            "province_match": [],   # 同省优质大学
-            "national_match": []    # 全国推荐大学
+            "score_match": [],
+            "province_match": [],
+            "national_match": []
         }
         
         if not major_name:
             return result
             
-        with self.conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        try:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            
+            conn = psycopg2.connect(
+                host='localhost',
+                port=5432,
+                database='employment',
+                user='postgres',
+                password='postgres'
+            )
+            
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             # 场景A：省份+分数+专业
             if province and score:
                 score_min = score - 30
@@ -327,7 +335,6 @@ class UniversityDataService:
                         s.year as score_year,
                         CASE 
                             WHEN m.name = ANY(u.major_strengths) THEN 100
-                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
                             ELSE 0
                         END as major_match_score,
                         CASE 
@@ -369,7 +376,6 @@ class UniversityDataService:
                         s.year as score_year,
                         CASE 
                             WHEN m.name = ANY(u.major_strengths) THEN 100
-                            WHEN u.major_strengths && ARRAY[m.name] THEN 60
                             ELSE 0
                         END as major_match_score,
                         CASE 

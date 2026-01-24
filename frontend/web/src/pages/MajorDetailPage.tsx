@@ -234,31 +234,36 @@ const MajorDetailPage: React.FC = () => {
         const targetId = parseInt(id);
         const targetItem = (majorData.data || []).find((item: any) => item.id === targetId);
         
+        let majorName: string;
+        
         if (targetItem) {
+          majorName = targetItem.major_name || targetItem.title;
           setMajor({
             id: targetItem.id,
-            major_name: targetItem.major_name || targetItem.title,
+            major_name: majorName,
             category: targetItem.category,
             employment_rate: targetItem.employment_rate,
             avg_salary: targetItem.avg_salary,
             heat_index: targetItem.heat_index,
             courses: targetItem.courses || ['专业基础课', '专业核心课', '专业选修课', '实践课程'],
-            description: `${targetItem.major_name || targetItem.title}专业培养具备扎实理论基础和实践能力的高级专门人才，毕业生可在相关领域从事研究、开发、管理等工作。`,
+            description: `${majorName}专业培养具备扎实理论基础和实践能力的高级专门人才，毕业生可在相关领域从事研究、开发、管理等工作。`,
             career_prospects: '随着社会经济发展，该专业人才需求持续增长。毕业生可在相关企业、事业单位、科研院所等从事相关工作，就业前景广阔。建议在校期间多参加实践活动，提升专业技能。',
             notes: getNotesByCategory(targetItem.category || '工学')
           });
         } else {
-          setMajor(createDefaultMajor(targetId));
+          const defaultMajor = createDefaultMajor(targetId);
+          majorName = defaultMajor.major_name;
+          setMajor(defaultMajor);
         }
 
-        // 获取推荐大学
+        // 获取推荐大学（使用本地变量而不是状态）
         if (userTarget) {
           let apiUrl = `${API_BASE}/api/v1/universities/recommend?province=${encodeURIComponent(userTarget.province)}`;
           if (userTarget.score) {
             apiUrl += `&score=${userTarget.score}`;
           }
-          if (major?.name) {
-            apiUrl += `&major=${encodeURIComponent(major.name)}`;
+          if (majorName) {
+            apiUrl += `&major=${encodeURIComponent(majorName)}`;
           }
           const uniResponse = await fetch(apiUrl);
           if (uniResponse.ok) {
@@ -266,7 +271,12 @@ const MajorDetailPage: React.FC = () => {
             setUniversities(uniData.universities || []);
           }
         } else {
-          const uniResponse = await fetch(`${API_BASE}/api/v1/universities/recommend`);
+          // 没有设置目标，但专业是必填的
+          let apiUrl = `${API_BASE}/api/v1/universities/recommend`;
+          if (majorName) {
+            apiUrl += `?major=${encodeURIComponent(majorName)}`;
+          }
+          const uniResponse = await fetch(apiUrl);
           if (uniResponse.ok) {
             const uniData: RecommendedUniversitiesResponse = await uniResponse.json();
             setUniversities(uniData.universities || []);
@@ -339,6 +349,8 @@ const MajorDetailPage: React.FC = () => {
     const provinceGroup = universities.filter(u => u.match_type === 'province');
     const nationalGroup = universities.filter(u => u.match_type === 'national');
     
+
+    
     if (scoreGroup.length > 0) {
       groups.push({ type: 'score', name: '🏆 分数匹配大学', list: scoreGroup });
     }
@@ -384,11 +396,12 @@ const MajorDetailPage: React.FC = () => {
         apiUrl += `?${params.toString()}`;
       }
       
-      const uniResponse = await fetch(apiUrl);
-      if (uniResponse.ok) {
-        const uniData: RecommendedUniversitiesResponse = await uniResponse.json();
-        setUniversities(uniData.universities || []);
-      }
+          const uniResponse = await fetch(apiUrl);
+          if (uniResponse.ok) {
+            const uniData: RecommendedUniversitiesResponse = await uniResponse.json();
+            console.log('获取到推荐大学数据:', uniData);
+            setUniversities(uniData.universities || []);
+          }
     } catch (err) {
       console.error('获取推荐大学失败:', err);
     }

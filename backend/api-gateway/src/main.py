@@ -173,6 +173,69 @@ async def auth_register(request: Request):
 async def auth_login(request: Request):
     return await proxy_request("user-service", "POST", "/api/v1/auth/login", await request.json())
 
+@app.post("/api/v1/auth/logout")
+async def auth_logout():
+    return await proxy_request("user-service", "POST", "/api/v1/auth/logout")
+
+@app.get("/api/v1/users/profile")
+async def get_user_profile():
+    return await proxy_request("user-service", "GET", "/api/v1/users/profile")
+
+@app.put("/api/v1/users/profile")
+async def update_user_profile(request: Request):
+    return await proxy_request("user-service", "PUT", "/api/v1/users/profile", await request.json())
+
+@app.post("/api/v1/chat/conversation")
+async def create_conversation(request: Request):
+    return await proxy_request("chat-service", "POST", "/api/v1/chat/conversation", await request.json())
+
+@app.get("/api/v1/chat/conversation/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    return await proxy_request("chat-service", "GET", f"/api/v1/chat/conversation/{conversation_id}")
+
+@app.post("/api/v1/chat/message")
+async def send_message(request: Request):
+    return await proxy_request("chat-service", "POST", "/api/v1/chat/message", await request.json())
+
+@app.get("/api/v1/major/categories")
+async def get_major_categories():
+    return await proxy_request("crawler-service", "GET", "/api/v1/major/categories")
+
+@app.get("/api/v1/major/market-data")
+async def get_major_market_data(request: Request):
+    params = dict(request.query_params)
+    return await proxy_request("crawler-service", "GET", "/api/v1/major/market-data", params)
+
+@app.get("/api/v1/major/market-data/stats")
+async def get_major_market_stats():
+    return await proxy_request("crawler-service", "GET", "/api/v1/major/market-data/stats")
+
+@app.get("/api/v1/major/{major_id}/detail")
+async def get_major_detail(major_id: str):
+    return await proxy_request("crawler-service", "GET", f"/api/v1/major/{major_id}/detail")
+
+@app.get("/api/v1/universities/recommend")
+async def get_recommended_universities(request: Request):
+    params = dict(request.query_params)
+    return await proxy_request("crawler-service", "GET", "/api/v1/universities/recommend", params)
+
+@app.get("/api/v1/hot-news")
+async def get_hot_news(request: Request):
+    params = dict(request.query_params)
+    return await proxy_request("crawler-service", "GET", "/api/v1/hot-news", params)
+
+@app.post("/api/v1/crawler/crawl")
+async def trigger_crawl(request: Request):
+    return await proxy_request("crawler-service", "POST", "/api/v1/crawler/crawl", await request.json())
+
+@app.post("/api/v1/crawler/reset-and-seed")
+async def reset_and_seed():
+    return await proxy_request("crawler-service", "POST", "/api/v1/crawler/reset-and-seed")
+
+@app.post("/api/v1/auth/login")
+async def auth_login(request: Request):
+    return await proxy_request("user-service", "POST", "/api/v1/auth/login", await request.json())
+
 @app.get("/api/v1/users/me")
 async def get_current_user_info(request: Request):
     auth_header = request.headers.get("Authorization")
@@ -228,6 +291,15 @@ async def get_trends(request: Request):
 @app.post("/api/v1/crawler/crawl")
 async def trigger_crawl(request: Request):
     return await proxy_request("crawler-service", "POST", "/api/v1/crawler/crawl", await request.json())
+
+@app.post("/api/v1/crawler/reset-and-seed")
+async def reset_and_seed():
+    return await proxy_request("crawler-service", "POST", "/api/v1/crawler/reset-and-seed")
+
+@app.get("/api/v1/universities/recommend")
+async def get_recommended_universities(request: Request):
+    params = dict(request.query_params)
+    return await proxy_request("crawler-service", "GET", "/api/v1/universities/recommend", params)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

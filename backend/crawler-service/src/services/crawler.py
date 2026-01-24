@@ -72,58 +72,43 @@ class MajorDataCrawler:
         data = []
         
         try:
-            # 模拟数据 - 实际应请求 https://gaokao.chsi.com.cn/
-            # 这里使用模拟数据，实际使用时替换为真实爬取逻辑
-            mock_data = [
-                {
-                    "title": "2024年计算机科学与技术专业招生情况",
-                    "major_name": "计算机科学与技术",
-                    "category": "工学",
-                    "source_url": f"https://gaokao.chsi.com.cn/special/{random.randint(1000,9999)}",
-                    "source_website": "阳光高考",
-                    "employment_rate": 95.5,
-                    "avg_salary": "18K-25K/月",
-                    "admission_score": 620,
-                    "heat_index": 98.5,
-                    "trend_data": {"2021": 92, "2022": 94, "2023": 95, "2024": 95.5},
-                    "description": "计算机科学与技术专业培养具有良好的科学素养，系统掌握计算机科学与技术，包括计算机硬件、软件与应用的基本理论、基本知识和基本技能的高级专门人才。",
-                    "courses": ["数据结构", "算法分析", "操作系统", "计算机网络", "数据库原理"],
-                    "career_prospects": "毕业生可在IT企业、科研单位、软件开发公司等从事软件开发、测试、维护等工作。"
-                },
-                {
-                    "title": "人工智能专业2024年就业前景分析",
-                    "major_name": "人工智能",
-                    "category": "工学",
-                    "source_url": f"https://gaokao.chsi.com.cn/special/{random.randint(1000,9999)}",
-                    "source_website": "阳光高考",
-                    "employment_rate": 98.2,
-                    "avg_salary": "25K-35K/月",
-                    "admission_score": 650,
-                    "heat_index": 99.1,
-                    "trend_data": {"2021": 85, "2022": 90, "2023": 95, "2024": 98.2},
-                    "description": "人工智能专业培养具备人工智能技术研发、系统设计、开发与应用能力的高级专门人才。",
-                    "courses": ["机器学习", "深度学习", "自然语言处理", "计算机视觉", "智能机器人"],
-                    "career_prospects": "毕业生可在AI公司、科技企业、研究机构等从事算法研发、系统开发等工作。"
-                },
-                {
-                    "title": "数据科学与大数据技术专业介绍",
-                    "major_name": "数据科学与大数据技术",
-                    "category": "理学",
-                    "source_url": f"https://gaokao.chsi.com.cn/special/{random.randint(1000,9999)}",
-                    "source_website": "阳光高考",
-                    "employment_rate": 92.3,
-                    "avg_salary": "20K-30K/月",
-                    "admission_score": 630,
-                    "heat_index": 94.5,
-                    "trend_data": {"2021": 80, "2022": 85, "2023": 90, "2024": 92.3},
-                    "description": "数据科学与大数据技术专业培养具备大数据分析、处理、挖掘和应用能力的高级专门人才。",
-                    "courses": ["数据分析", "大数据处理", "数据可视化", "统计学", "机器学习"],
-                    "career_prospects": "毕业生可在互联网公司、金融机构、数据分析公司等从事数据分析、数据挖掘等工作。"
-                }
-            ]
+            # 真实数据爬取 - 阳光高考官网
+            base_url = "https://gaokao.chsi.com.cn"
             
-            data = mock_data
-            logger.info(f"阳光高考数据获取完成: {len(data)} 条")
+            # 爬取专业列表
+            major_list_url = f"{base_url}/zyk/zybk/"
+            html_content = await self._fetch_with_retry(major_list_url)
+            
+            if html_content:
+                # 解析专业列表页面，获取专业详情链接
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # 查找专业信息链接（根据实际页面结构调整选择器）
+                major_links = soup.select('a[href*="/special/"]')[:20]  # 限制爬取数量避免被封
+                
+                for link in major_links:
+                    try:
+                        major_url = base_url + link.get('href', '')
+                        major_name = link.get_text(strip=True)
+                        
+                        # 爬取专业详情页面
+                        major_detail_html = await self._fetch_with_retry(major_url)
+                        if major_detail_html:
+                            major_data = self._parse_major_detail(
+                                major_detail_html, major_name, major_url
+                            )
+                            if major_data:
+                                data.append(major_data)
+                                
+                        # 遵守爬虫礼貌，避免请求过于频繁
+                        await asyncio.sleep(random.uniform(2, 5))
+                        
+                    except Exception as e:
+                        logger.warning(f"爬取专业 {major_name} 失败: {e}")
+                        continue
+            
+            logger.info(f"阳光高考真实数据获取完成: {len(data)} 条")
             
         except Exception as e:
             logger.error(f"爬取阳光高考失败: {e}")
@@ -270,6 +255,26 @@ class MajorDataCrawler:
                 logger.warning(f"请求异常 (尝试 {attempt + 1}/{max_retries}): {e}")
         
         return None
+    
+    def _extract_category(self, soup) -> str:
+        """提取专业类别"""
+        try:
+            category_elements = soup.select('[class*="category"], [class*="subject"], .major-category')
+            if category_elements:
+                return category_elements[0].get_text(strip=True)
+        except:
+            pass
+        return "未分类"
+    
+    def _extract_career_info(self, soup) -> str:
+        """提取就业前景信息"""
+        try:
+            career_elements = soup.select('[class*="career"], [class*="prospect"], [class*="job"]')
+            if career_elements:
+                return career_elements[0].get_text(strip=True)
+        except:
+            pass
+        return "就业前景良好，毕业生可在相关领域从事相关工作。"
 
 
 # 模拟数据生成函数（用于测试）

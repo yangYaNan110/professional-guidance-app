@@ -144,8 +144,6 @@ class RedisCacheService:
     
     def _serialize(self, value: Any) -> str:
         """序列化值"""
-        if isinstance(value, str):
-            return value
         return json.dumps(value, ensure_ascii=False, default=str)
     
     def _deserialize(self, value: str) -> Any:

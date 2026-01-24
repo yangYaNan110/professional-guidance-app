@@ -43,7 +43,8 @@ tools:
 
 - backend-analyze
 - backend-plan
-- backend-api
+- backend-api: RESTful API和WebSocket开发
+  - **最新更新**: 场景A推荐逻辑优化，将"分数匹配大学"拆分为"同省分数匹配大学"和"全国分数匹配大学"两个独立分组
 - backend-gateway
 
 ## 技术栈
