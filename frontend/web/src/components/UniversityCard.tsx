@@ -1,6 +1,6 @@
 // 大学卡片组件
-import React from 'react';
-import { University } from '../types/university';
+import React, { useState } from 'react';
+import { University, TierScoreData } from '../types/university';
 
 interface UniversityCardProps {
   university: University;
@@ -11,6 +11,8 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
   university, 
   onViewDetail 
 }) => {
+  const [showTierScores, setShowTierScores] = useState(false);
+
   const getLevelColor = (level?: string) => {
     switch (level) {
       case '985':
@@ -38,6 +40,23 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
         return '📚';
       default:
         return '🏛️';
+    }
+  };
+
+  const getTierColor = (tier?: string) => {
+    switch (tier) {
+      case '985_211':
+        return 'border-red-200 bg-red-50';
+      case 'provincial_key':
+        return 'border-blue-200 bg-blue-50';
+      case 'first_tier':
+        return 'border-green-200 bg-green-50';
+      case 'second_tier':
+        return 'border-yellow-200 bg-yellow-50';
+      case 'vocational':
+        return 'border-purple-200 bg-purple-50';
+      default:
+        return 'border-gray-200 bg-gray-50';
     }
   };
 
@@ -82,6 +101,51 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
         )}
       </div>
 
+      {/* 多层次分数线展示 */}
+      {university.tier_scores && Object.keys(university.tier_scores).length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={() => setShowTierScores(!showTierScores)}
+            className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
+            <span className="mr-1">📊</span>
+            <span>查看历年分数线</span>
+            <span className="ml-1 text-xs">
+              {showTierScores ? '▼' : '▶'}
+            </span>
+          </button>
+          
+          {showTierScores && (
+            <div className="mt-3 space-y-2">
+              {Object.entries(university.tier_scores).map(([tierKey, tierData]) => (
+                <div key={tierKey} className={`border rounded-md p-3 ${getTierColor(tierKey)}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-sm">{tierData.tier_name}</h4>
+                    <span className="text-xs text-gray-600">
+                      {tierData.years.length}年数据
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    {tierData.years.slice(0, 3).map((yearData) => (
+                      <div key={yearData.year} className="text-center">
+                        <div className="font-medium text-gray-700">{yearData.year}</div>
+                        <div className="text-gray-600">
+                          {yearData.avg_score ? `${yearData.avg_score}分` : '暂无'}
+                        </div>
+                        {yearData.admission_type && (
+                          <div className="text-gray-500 text-xs">{yearData.admission_type}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 匹配原因 */}
       {university.match_reason && (
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -106,9 +170,10 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
             href={university.website}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
+            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+            title={`访问${university.name}官方网站`}
           >
-            官网
+            🌐 官网
           </a>
         )}
       </div>

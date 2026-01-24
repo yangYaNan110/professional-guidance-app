@@ -121,6 +121,11 @@ def get_related_majors(major: str) -> List[str]:
     else:
         return engineering + business  # 默认返回工科+商科
 
+def get_cross_disciplinary_majors(major: str) -> List[str]:
+    """获取跨学科专业列表"""
+    # 简化处理，返回更多相关专业
+    return get_related_majors(major)
+
 def get_level_priority(level: str) -> int:
     """获取大学层次优先级"""
     mapping = {
@@ -132,7 +137,7 @@ def get_level_priority(level: str) -> int:
     }
     return mapping.get(level, 6)
 
-def recommend_scenario_a(major: str, province: str, score: int, limit: int) -> Dict[str, Any]:
+def recommend_scenario_a(major: str, province: str, score: int, limit: int) -> RecommendationResponse:
     """场景A: 专业+省份+分数"""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -183,7 +188,7 @@ def recommend_scenario_a(major: str, province: str, score: int, limit: int) -> D
                 "name": "🏆 同省分数匹配大学",
                 "count": len(province_results),
                 "description": f"{province}省内录取分数{score_range_min}-{score_range_max}分段的高校",
-                "universities": [format_university(row, major) for row in province_results]
+                "universities": [format_university_with_tiers(row, major, conn) for row in province_results]
             }
         
         if national_results:
@@ -191,15 +196,15 @@ def recommend_scenario_a(major: str, province: str, score: int, limit: int) -> D
                 "name": "🌟 全国分数匹配大学", 
                 "count": len(national_results),
                 "description": f"全国范围内录取分数{score_range_min}-{score_range_max}分段的高校",
-                "universities": [format_university(row, major) for row in national_results]
+                "universities": [format_university_with_tiers(row, major, conn) for row in national_results]
             }
         
-        return {
-            "success": True,
-            "scenario": "A",
-            "total": len(province_results) + len(national_results),
-            "groups": groups
-        }
+        return RecommendationResponse(
+            success=True,
+            scenario="A",
+            total=len(province_results) + len(national_results),
+            groups=groups
+        )
         
     except Exception as e:
         logger.error(f"场景A推荐失败: {e}")
@@ -208,7 +213,7 @@ def recommend_scenario_a(major: str, province: str, score: int, limit: int) -> D
         cursor.close()
         conn.close()
 
-def recommend_scenario_b(major: str, province: str, limit: int) -> Dict[str, Any]:
+def recommend_scenario_b(major: str, province: str, limit: int) -> RecommendationResponse:
     """场景B: 专业+省份"""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -248,7 +253,7 @@ def recommend_scenario_b(major: str, province: str, limit: int) -> Dict[str, Any
                 "name": "📍 同省优质大学",
                 "count": len(province_results),
                 "description": f"{province}省内{major}专业的优质高校",
-                "universities": [format_university(row, major) for row in province_results]
+                "universities": [format_university_with_tiers(row, major, conn) for row in province_results]
             }
         
         if national_results:
@@ -256,15 +261,15 @@ def recommend_scenario_b(major: str, province: str, limit: int) -> Dict[str, Any
                 "name": "🌟 全国推荐大学",
                 "count": len(national_results), 
                 "description": f"全国范围内{major}专业的优质高校",
-                "universities": [format_university(row, major) for row in national_results]
+                "universities": [format_university_with_tiers(row, major, conn) for row in national_results]
             }
         
-        return {
-            "success": True,
-            "scenario": "B",
-            "total": len(province_results) + len(national_results),
-            "groups": groups
-        }
+        return RecommendationResponse(
+            success=True,
+            scenario="B",
+            total=len(province_results) + len(national_results),
+            groups=groups
+        )
         
     except Exception as e:
         logger.error(f"场景B推荐失败: {e}")
@@ -273,7 +278,7 @@ def recommend_scenario_b(major: str, province: str, limit: int) -> Dict[str, Any
         cursor.close()
         conn.close()
 
-def recommend_scenario_c(major: str, limit: int) -> Dict[str, Any]:
+def recommend_scenario_c(major: str, limit: int) -> RecommendationResponse:
     """场景C: 只有专业"""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -299,15 +304,15 @@ def recommend_scenario_c(major: str, limit: int) -> Dict[str, Any]:
                 "name": "🌟 全国推荐大学",
                 "count": len(national_results),
                 "description": f"全国范围内{major}专业的优质高校",
-                "universities": [format_university(row, major) for row in national_results]
+                "universities": [format_university_with_tiers(row, major, conn) for row in national_results]
             }
         
-        return {
-            "success": True,
-            "scenario": "C",
-            "total": len(national_results),
-            "groups": groups
-        }
+        return RecommendationResponse(
+            success=True,
+            scenario="C",
+            total=len(national_results),
+            groups=groups
+        )
         
     except Exception as e:
         logger.error(f"场景C推荐失败: {e}")
@@ -316,16 +321,51 @@ def recommend_scenario_c(major: str, limit: int) -> Dict[str, Any]:
         cursor.close()
         conn.close()
 
-def format_university(row, major: str) -> Dict[str, Any]:
-    """格式化大学信息"""
+def format_university_with_tiers(row, major: str, conn) -> Dict[str, Any]:
+    """格式化大学信息（包含多层次分数线）"""
+    university_id = row[0]
     university_majors = []
-    if len(row) > 7:  # 如果有专业信息
-        university_majors = [major]  # 简化处理，实际应从数据库获取
+    
+    # 获取该大学所有层次的分数线数据
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT program_tier, year, min_score, max_score, avg_score, admission_type
+            FROM university_admission_scores
+            WHERE university_id = %s 
+              AND major_name = %s
+              AND year >= 2021
+            ORDER BY program_tier, year DESC
+        """, (university_id, major))
+        
+        tier_scores = cursor.fetchall()
+        
+        # 组织分数线数据
+        score_data = {}
+        for tier, year, min_score, max_score, avg_score, admission_type in tier_scores:
+            if tier not in score_data:
+                score_data[tier] = {
+                    "tier_name": get_tier_display_name(tier),
+                    "years": []
+                }
+            score_data[tier]["years"].append({
+                "year": year,
+                "min_score": min_score,
+                "max_score": max_score, 
+                "avg_score": float(avg_score) if avg_score else None,
+                "admission_type": admission_type
+            })
+        
+    except Exception as e:
+        logger.error(f"获取分数线数据失败: {e}")
+        score_data = {}
+    finally:
+        cursor.close()
     
     match_score = calculate_major_match_score(major, university_majors)
     
     return {
-        "id": row[0],
+        "id": university_id,
         "name": row[1],
         "province": row[2],
         "city": row[3],
@@ -333,8 +373,21 @@ def format_university(row, major: str) -> Dict[str, Any]:
         "employment_rate": float(row[5]) if row[5] else None,
         "website": row[6],
         "match_score": match_score,
-        "match_reason": f"专业匹配度: {match_score:.2f}"
+        "match_reason": f"专业匹配度: {match_score:.2f}",
+        "tier_scores": score_data,
+        "available_tiers": list(score_data.keys())
     }
+
+def get_tier_display_name(tier: str) -> str:
+    """获取层次显示名称"""
+    tier_names = {
+        "first_tier": "一本",
+        "second_tier": "二本", 
+        "vocational": "专科",
+        "985_211": "985/211",
+        "provincial_key": "省属重点"
+    }
+    return tier_names.get(tier, tier)
 
 @app.get("/health")
 async def health_check():
@@ -363,11 +416,11 @@ async def recommend_universities(
         
         # 根据场景执行推荐
         if scenario == "A":
-            return recommend_scenario_a(major, province, score, limit)
+            return recommend_scenario_a(major, province or "", score or 0, limit or 10)
         elif scenario == "B":
-            return recommend_scenario_b(major, province, limit)
+            return recommend_scenario_b(major, province or "", limit or 10)
         else:
-            return recommend_scenario_c(major, limit)
+            return recommend_scenario_c(major, limit or 10)
             
     except HTTPException:
         raise
