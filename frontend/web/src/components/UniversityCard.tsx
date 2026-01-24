@@ -102,7 +102,7 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
       </div>
 
       {/* 多层次分数线展示 */}
-      {university.tier_scores && Object.keys(university.tier_scores).length > 0 && (
+      {university.tier_scores && typeof university.tier_scores === 'object' && Object.keys(university.tier_scores).length > 0 && (
         <div className="mb-4">
           <button
             onClick={() => setShowTierScores(!showTierScores)}
@@ -122,12 +122,12 @@ const UniversityCard: React.FC<UniversityCardProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">{tierData.tier_name}</h4>
                     <span className="text-xs text-gray-600">
-                      {tierData.years.length}年数据
+                      {tierData.years ? tierData.years.length : 0}年数据
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2 text-xs">
-                    {tierData.years.slice(0, 3).map((yearData) => (
+                    {tierData.years && tierData.years.slice(0, 3).map((yearData) => (
                       <div key={yearData.year} className="text-center">
                         <div className="font-medium text-gray-700">{yearData.year}</div>
                         <div className="text-gray-600">

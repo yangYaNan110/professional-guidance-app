@@ -43,7 +43,7 @@ const UniversityGroups: React.FC<UniversityGroupsProps> = ({
   // 获取分组显示顺序
   const getGroupOrder = (): string[] => {
     if (scenario === 'A') {
-      return ['score_match', 'national_match'];
+      return ['province_score_match', 'national_score_match'];
     } else if (scenario === 'B') {
       return ['province_match', 'national_match'];
     } else {

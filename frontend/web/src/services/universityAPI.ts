@@ -1,7 +1,7 @@
 // 大学推荐API服务
 import { RecommendationRequest, RecommendationResponse } from '../types/university';
 
-const API_BASE_URL = 'http://localhost:8004';
+const API_BASE_URL = 'http://localhost:8002';
 
 export class UniversityAPI {
   // 获取推荐大学列表
