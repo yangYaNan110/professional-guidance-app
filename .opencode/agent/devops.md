@@ -44,6 +44,11 @@ tools:
    - 配置自动化部署
    - 配置回滚策略
 
+6. **nginx配置**
+   - 编写nginx反向代理配置
+   - 配置负载均衡
+   - 配置SSL/TLS加密
+
 ## 可用技能
 
 - devops-analyze
@@ -51,6 +56,7 @@ tools:
 - devops-docker
 - devops-k8s
 - devops-ci
+- devops-nginx
 
 ## 技术栈
 
@@ -71,6 +77,7 @@ tools:
 4. 使用对应技能执行开发
 5. 配置监控和告警
 6. 编写运维文档
+7. 编写nginx配置文件
 
 ## 协作规范
 

@@ -117,22 +117,6 @@
         "skill": true
       }
     },
-    "prompt": {
-      "description": "提示引导Agent，负责识别数据建模场景并引导完成设计",
-      "mode": "subagent",
-      "model": "anthropic/claude-3-5-sonnet-20241022",
-      "temperature": 0.2,
-      "prompt": "{file:.opencode/agent/prompt.md}",
-      "tools": {
-        "read": true,
-        "write": true,
-        "edit": true,
-        "bash": true,
-        "glob": true,
-        "grep": true,
-        "skill": true
-      }
-    },
     "document-processor": {
       "description": "文档处理Agent，负责爬取、分析、总结文档内容，生成专业介绍",
       "mode": "subagent",
