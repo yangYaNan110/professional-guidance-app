@@ -1,11 +1,13 @@
 ---
 name: devops-docker
-description: Docker容器化配置，包括Dockerfile和docker-compose
+description: Docker容器化配置
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
-  workflow: devops-containerization
+  workflow: devops-deployment
+  model: anthropic/claude-sonnet-4-20250514
+  temperature: 0.1
 ---
 
 ## 我做什么

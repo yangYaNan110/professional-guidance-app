@@ -6,6 +6,8 @@ compatibility: opencode
 metadata:
   audience: developers
   workflow: data-pipeline
+  model: anthropic/claude-sonnet-4-20250514
+  temperature: 0.1
 ---
 
 ## 我做什么

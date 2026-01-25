@@ -1,11 +1,13 @@
 ---
 name: frontend-web
-description: Web端React应用开发，构建用户界面和交互体验
+description: Web端React应用开发
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
   workflow: frontend-development
+  model: anthropic/claude-sonnet-4-20250514
+  temperature: 0.2
 ---
 
 ## 我做什么

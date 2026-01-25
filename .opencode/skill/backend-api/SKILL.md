@@ -1,11 +1,13 @@
 ---
 name: backend-api
-description: RESTful API和WebSocket开发，提供标准化接口服务
+description: RESTful API和WebSocket开发
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
   workflow: backend-development
+  model: anthropic/claude-sonnet-4-20250514
+  temperature: 0.2
 ---
 
 ## 我做什么

@@ -1,11 +1,13 @@
 ---
 name: ai-recommend
-description: 推荐算法开发，实现智能匹配和个性化推荐
+description: 推荐算法开发
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
-  workflow: ai-development
+  workflow: ai-ml-development
+  model: anthropic/claude-sonnet-4-20250514
+  temperature: 0.3
 ---
 
 ## 我做什么
