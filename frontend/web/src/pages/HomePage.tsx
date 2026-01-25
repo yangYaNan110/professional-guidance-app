@@ -8,7 +8,7 @@ interface Stats {
   last_crawl: string;
 }
 
-const API_BASE = 'http://localhost:8004';
+const API_BASE = 'http://localhost:8002';
 
 const HomePage: React.FC = () => {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -18,14 +18,29 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/v1/major/market-data/stats`);
-        if (!response.ok) throw new Error('获取统计数据失败');
+        console.log('开始获取统计数据...');
+        const response = await fetch(`${API_BASE}/api/v1/statistics`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          console.error('Response not ok:', response.statusText);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
-        setStats({
-          total: data.total || 0,
-          categories: data.by_category || [],
-          last_crawl: data.last_crawl || ''
-        });
+        console.log('Received data:', data);
+        
+        if (data.success) {
+          setStats({
+            total: data.data.total_majors || 0,
+            categories: [],
+            last_crawl: data.data.data_updated_at || ''
+          });
+          console.log('Stats set successfully');
+        } else {
+          console.error('API returned error:', data.message);
+          throw new Error(data.message || '获取统计数据失败');
+        }
       } catch (err) {
         console.error('获取统计数据失败:', err);
         setError(err instanceof Error ? err.message : '未知错误');

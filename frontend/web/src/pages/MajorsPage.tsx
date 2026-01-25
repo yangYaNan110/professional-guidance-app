@@ -83,7 +83,7 @@ const SORT_OPTIONS = [
   { value: 'crawled_at', label: '最新更新' }
 ];
 
-const API_BASE = 'http://localhost:8004';
+const API_BASE = 'http://localhost:8002';
 
 const MajorsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -104,10 +104,11 @@ const MajorsPage: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/v1/major/categories`);
+        const response = await fetch(`${API_BASE}/api/v1/categories`);
         if (!response.ok) throw new Error('获取学科列表失败');
         const data = await response.json();
-        setCategories(data.categories || []);
+        // 修复：API返回 {success: true, data: []} 结构
+        setCategories(data.data || []);
       } catch (err) {
         console.error('获取学科列表失败:', err);
         setError(err instanceof Error ? err.message : '未知错误');
@@ -132,22 +133,27 @@ const MajorsPage: React.FC = () => {
       const order = 'desc';
       
       const response = await fetch(
-        `${API_BASE}/api/v1/major/market-data?page=${page}&page_size=${PAGE_SIZE}&sort_by=${sortField}&order=${order}${categoryParam}`
+        `${API_BASE}/api/v1/recommendations?page=${page}&page_size=${PAGE_SIZE}&sort_by=${sortField}&sort_order=${order}${categoryParam}`
       );
       
       if (!response.ok) throw new Error('获取专业列表失败');
       const data = await response.json();
       
-      const convertedMajors: Major[] = (data.data || []).map((item: MarketData) => ({
+// 修复API响应结构解析 - API返回 {success: true, data: {success: true, data: [], pagination: {}}}
+      const responseData = data.data || {};
+      const majorsData = responseData.data || [];
+      const pagination = responseData.pagination || {};
+      
+      const convertedMajors: Major[] = majorsData.map((item: MarketData) => ({
         id: String(item.id),
-        name: item.major_name || item.title,
-        category: item.category || '未知',
+        name: item.name || item.major_name || item.title,
+        category: item.category_name || '未知',
         duration: '4年',
         courses: item.courses || [],
         employmentRate: item.employment_rate ? `${item.employment_rate}%` : '暂无数据',
-        avgSalary: item.avg_salary || '暂无数据',
-        matchScore: item.heat_index || Math.floor(Math.random() * 30 + 60),
-        crawled_at: item.crawled_at || new Date().toISOString()
+        avgSalary: item.avg_salary ? `¥${(parseFloat(item.avg_salary.toString()) / 1000).toFixed(1)}k` : '暂无数据',
+        matchScore: item.heat_index || 0,
+        crawledAt: item.data_period || new Date().toISOString()
       }));
       
       if (isLoadMore) {
@@ -157,16 +163,16 @@ const MajorsPage: React.FC = () => {
       }
       
       setCurrentPage(page);
-      setTotalPages(data.pagination?.total_pages || 1);
-      setHasMore(page < (data.pagination?.total_pages || 1));
+      setTotalPages(pagination.total_pages || 1);
+      setHasMore(page < (pagination.total_pages || 1));
       setError(null);
-    } catch (err) {
-      console.error('获取专业列表失败:', err);
-      setError(err instanceof Error ? err.message : '未知错误');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
+} catch (err) {
+        console.error('获取专业列表失败:', err);
+        setError(err instanceof Error ? err.message : '获取专业列表失败');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
   };
 
   // 初始加载或切换学科/排序时重新加载

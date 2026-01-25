@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data_file": "/Users/yangyanan/yyn/opencode/08_demo/backend/crawler-service/major_concept_data.json",
+  "processed_majors": 5,
+  "total_concepts": 99,
+  "quality_score": 100,
+  "data_types": {
+    "origin": 5,
+    "development_history": 49,
+    "major_events": 35,
+    "current_status": 5,
+    "future_prospects": 5
+  },
+  "process_time": "2026-01-25T13:29:56.637583",
+  "message": "成功处理 5 个专业的概念数据"
+}

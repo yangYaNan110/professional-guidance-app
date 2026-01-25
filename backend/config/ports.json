@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-25",
+  "services": {
+    "database": {
+      "postgresql": 5432,
+      "redis": 6379,
+      "elasticsearch": 9200
+    },
+    "infrastructure": {
+      "nginx": 80,
+      "minio": 9000,
+      "kafka": 9092
+    },
+    "backend": {
+      "api-gateway": 8000,
+      "user-service": 8001,
+      "recommendation-service": 8002,
+      "major-service": 8003,
+      "market-data-service": 8004,
+      "university-service": 8005,
+      "chat-service": 8006,
+      "voice-service": 8007,
+      "crawler-service": 8008,
+      "document-service": 8009,
+      "video-service": 8010,
+      "analytics-service": 8011
+    },
+    "frontend": {
+      "web": 3000,
+      "mobile": 19000
+    }
+  },
+  "rules": {
+    "fixed_ports": true,
+    "conflict_check": true,
+    "auto_restart_on_conflict": false
+  }
+}
