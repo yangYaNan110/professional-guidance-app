@@ -59,11 +59,11 @@ def extract_skills(text: str) -> List[str]:
         "React", "Vue", "Angular", "Next.js", "Nuxt.js",
         "FastAPI", "Django", "Flask", "Spring", "Express", "NestJS",
         "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Kafka",
-        "Docker", "Kubernetes", "Jenkins", "GitLab CI", "GitHub Actions",
+        "Kubernetes", "Jenkins", "GitLab CI", "GitHub Actions",
         "AWS", "Azure", "GCP", "Tencent Cloud", "Aliyun",
         "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "OpenCV",
         "NLP", "CV", "Machine Learning", "Deep Learning",
-        "Git", "SVN", "Linux", "Nginx", "Apache",
+        "Git", "SVN", "Linux", "Apache",
         "TCP/IP", "HTTP", "HTTPS", "WebSocket", "REST", "GraphQL"
     ]
     

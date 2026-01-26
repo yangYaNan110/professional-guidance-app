@@ -12,7 +12,7 @@ from typing import Dict, Any, List
 
 class DBExpert:
     def __init__(self):
-        # 使用Docker连接参数
+        # 使用数据库连接参数
         self.db_config = {
             'host': os.getenv('DB_HOST', 'localhost'),
             'port': int(os.getenv('DB_PORT', 5432)),

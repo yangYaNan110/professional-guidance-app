@@ -16,13 +16,13 @@
 
 ```bash
 # 启动基础设施服务
-docker-compose -f docker/docker-compose.infra.yml up -d
+# 请手动启动 PostgreSQL, Redis, Elasticsearch 等服务
 
 # 启动应用服务
-docker-compose -f docker/docker-compose.app.yml up -d
+# 请手动启动各后端服务和前端服务
 
 # 查看服务状态
-docker-compose ps
+# 请检查各服务端口状态
 ```
 
 ## 项目结构
@@ -41,7 +41,7 @@ docker-compose ps
 │   └── ...
 ├── database/          # 数据库
 │   └── migrations/    # 迁移文件
-├── docker/            # Docker配置
+
 ├── docs/              # 文档
 └── scripts/           # 脚本
 ```
