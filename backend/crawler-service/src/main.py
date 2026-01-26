@@ -442,6 +442,7 @@ async def get_crawler_statistics():
 
 @app.get("/api/v1/major/categories")
 async def get_categories(limit: int = 10):
+    print("获取学科分类....")
     from services.quota_manager import quota_manager
     categories = quota_manager.get_hot_categories(limit)
     return {"categories": categories, "total": len(categories)}
@@ -2216,6 +2217,9 @@ async def get_recommended_universities(
             user='postgres',
             password='postgres'
         )
+        
+
+    
         
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             # 确定场景和推荐策略

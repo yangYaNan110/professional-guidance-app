@@ -17,16 +17,5 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8004',
-        changeOrigin: true,
-        secure: false, // 如果接口不支持https
-      },
-      '/ws': {
-        target: 'ws://localhost:8000',
-        ws: true,
-      },
-    },
   },
 });

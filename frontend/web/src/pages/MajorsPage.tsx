@@ -83,7 +83,7 @@ const SORT_OPTIONS = [
   { value: 'crawled_at', label: '最新更新' }
 ];
 
-const API_BASE = 'http://localhost:8002';
+const API_BASE = 'http://localhost';
 
 const MajorsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -104,11 +104,14 @@ const MajorsPage: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/v1/categories`);
+        const response = await fetch(`${API_BASE}/api/v1/major/categories`);
+        
         if (!response.ok) throw new Error('获取学科列表失败');
         const data = await response.json();
+        console.log("学科列表...",data);
+
         // 修复：API返回 {success: true, data: []} 结构
-        setCategories(data.data || []);
+        setCategories(data.categories || []);
       } catch (err) {
         console.error('获取学科列表失败:', err);
         setError(err instanceof Error ? err.message : '未知错误');

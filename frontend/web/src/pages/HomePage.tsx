@@ -8,7 +8,7 @@ interface Stats {
   last_crawl: string;
 }
 
-const API_BASE = 'http://localhost:8002';
+const API_BASE = 'http://localhost';
 
 const HomePage: React.FC = () => {
   const [stats, setStats] = useState<Stats | null>(null);

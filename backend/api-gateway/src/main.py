@@ -281,6 +281,7 @@ async def text_to_speech(request: Request):
 @app.get("/api/v1/recommendations")
 async def get_recommendations(request: Request):
     params = dict(request.query_params)
+    print("获取专业列表....001",params)
     return await proxy_request("recommendation-service", "GET", "/api/v1/recommendations", params)
 
 @app.get("/api/v1/analytics/trends")
